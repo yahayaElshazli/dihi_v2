@@ -8,8 +8,16 @@ let lastSupabaseError = '';
 
 function initSupabase() {
   if (!cfg.supabaseUrl || !cfg.supabaseAnonKey || !window.supabase) { supabaseClient = null; return; }
-  try { supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey); }
-  catch (e) { supabaseClient = null; }
+  try {
+    const parsed = new URL(cfg.supabaseUrl.trim());
+    if (parsed.protocol !== 'https:' && parsed.hostname !== 'localhost') throw new Error('Supabase project URL must use HTTPS.');
+    if (parsed.username || parsed.password || parsed.search || parsed.hash) throw new Error('Enter only the Supabase project URL.');
+    // The JS client needs the project root, not REST/Auth endpoint URLs.
+    parsed.pathname = parsed.pathname.replace(/\/(rest|auth|storage|functions)\/v1\/?$/, '').replace(/\/+$/, '');
+    if (parsed.pathname) throw new Error('Use the root project URL, for example https://your-project.supabase.co, without a path.');
+    cfg.supabaseUrl = parsed.origin;
+    supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
+  } catch (e) { supabaseClient = null; }
 }
 
 function showAuthGate(message) {
