@@ -9,11 +9,12 @@
   document.getElementById('authSaveConfigBtn').addEventListener('click', () => {
     cfg.supabaseUrl = document.getElementById('authSupabaseUrl').value.trim();
     cfg.supabaseAnonKey = document.getElementById('authSupabaseKey').value.trim();
-    saveConfig(cfg);
     initSupabase();
+    if (supabaseClient) document.getElementById('authSupabaseUrl').value = cfg.supabaseUrl;
+    saveConfig(cfg);
     const msg = document.getElementById('authMsg');
     msg.style.color = supabaseClient ? 'var(--teal)' : 'var(--rust)';
-    msg.textContent = supabaseClient ? 'Saved. Create an account or sign in above.' : 'Enter both the project URL and the anon key.';
+    msg.textContent = supabaseClient ? 'Saved. Create an account or sign in above.' : supabaseInitError;
   });
   if (cfg.supabaseUrl) document.getElementById('authSupabaseUrl').value = cfg.supabaseUrl;
   if (cfg.supabaseAnonKey) document.getElementById('authSupabaseKey').value = cfg.supabaseAnonKey;
@@ -25,7 +26,7 @@
     const button = document.getElementById(action === 'signup' ? 'authSignUpBtn' : 'authSignInBtn');
     if (!supabaseClient) {
       msg.style.color = 'var(--rust)';
-      msg.textContent = 'Save your Supabase project URL and anon public key in “First time here?” before creating an account.';
+      msg.textContent = supabaseInitError || 'Save your Supabase settings before creating an account.';
       return;
     }
     if (!email || !password) { msg.style.color = 'var(--rust)'; msg.textContent = 'Enter an email and password.'; return; }

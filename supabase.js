@@ -5,9 +5,19 @@
 let supabaseClient = null;
 let currentUser = null;
 let lastSupabaseError = '';
+let supabaseInitError = '';
 
 function initSupabase() {
-  if (!cfg.supabaseUrl || !cfg.supabaseAnonKey || !window.supabase) { supabaseClient = null; return; }
+  supabaseClient = null;
+  supabaseInitError = '';
+  if (!cfg.supabaseUrl || !cfg.supabaseAnonKey) {
+    supabaseInitError = 'Enter your Supabase project URL and anon public key, then save the settings.';
+    return;
+  }
+  if (!window.supabase) {
+    supabaseInitError = 'The Supabase client library did not load. Check your internet connection and reload the app.';
+    return;
+  }
   try {
     const parsed = new URL(cfg.supabaseUrl.trim());
     if (parsed.protocol !== 'https:' && parsed.hostname !== 'localhost') throw new Error('Supabase project URL must use HTTPS.');
@@ -17,7 +27,7 @@ function initSupabase() {
     if (parsed.pathname) throw new Error('Use the root project URL, for example https://your-project.supabase.co, without a path.');
     cfg.supabaseUrl = parsed.origin;
     supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
-  } catch (e) { supabaseClient = null; }
+  } catch (e) { supabaseInitError = e.message || 'Check your Supabase project URL.'; }
 }
 
 function showAuthGate(message) {
@@ -31,12 +41,12 @@ function hideAuthGate() {
 }
 
 async function signIn(email, password) {
-  if (!supabaseClient) return 'Enter your Supabase project URL and anon key below first, then save.';
+  if (!supabaseClient) return supabaseInitError || 'Supabase is not configured.';
   const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
   return error ? error.message : null;
 }
 async function signUp(email, password) {
-  if (!supabaseClient) return 'Enter your Supabase project URL and anon key below first, then save.';
+  if (!supabaseClient) return supabaseInitError || 'Supabase is not configured.';
   const { error } = await supabaseClient.auth.signUp({ email, password });
   return error ? error.message : null;
 }
