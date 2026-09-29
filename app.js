@@ -22,13 +22,27 @@
     const email = document.getElementById('authEmail').value.trim();
     const password = document.getElementById('authPassword').value;
     const msg = document.getElementById('authMsg');
+    const button = document.getElementById(action === 'signup' ? 'authSignUpBtn' : 'authSignInBtn');
+    if (!supabaseClient) {
+      msg.style.color = 'var(--rust)';
+      msg.textContent = 'Save your Supabase project URL and anon public key in “First time here?” before creating an account.';
+      return;
+    }
     if (!email || !password) { msg.style.color = 'var(--rust)'; msg.textContent = 'Enter an email and password.'; return; }
     msg.style.color = 'var(--ink-dim)'; msg.textContent = action === 'signup' ? 'Creating account…' : 'Signing in…';
-    const error = action === 'signup' ? await signUp(email, password) : await signIn(email, password);
-    if (error) { msg.style.color = 'var(--rust)'; msg.textContent = error; return; }
-    if (action === 'signup') { msg.style.color = 'var(--teal)'; msg.textContent = 'Account created — check your email to confirm, then sign in.'; return; }
-    msg.textContent = '';
-    fetchAll();
+    button.disabled = true;
+    try {
+      const error = action === 'signup' ? await signUp(email, password) : await signIn(email, password);
+      if (error) { msg.style.color = 'var(--rust)'; msg.textContent = error; return; }
+      if (action === 'signup') { msg.style.color = 'var(--teal)'; msg.textContent = 'Account created — check your email to confirm, then sign in.'; return; }
+      msg.textContent = '';
+      await fetchAll();
+    } catch (error) {
+      msg.style.color = 'var(--rust)';
+      msg.textContent = error?.message || 'Could not reach Supabase. Check your connection and project settings, then try again.';
+    } finally {
+      button.disabled = false;
+    }
   }
   document.getElementById('authSignInBtn').addEventListener('click', () => handleAuth('signin'));
   document.getElementById('authSignUpBtn').addEventListener('click', () => handleAuth('signup'));
