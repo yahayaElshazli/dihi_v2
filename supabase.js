@@ -23,8 +23,8 @@ function initSupabase() {
     if (parsed.protocol !== 'https:' && parsed.hostname !== 'localhost') throw new Error('Supabase project URL must use HTTPS.');
     if (parsed.username || parsed.password || parsed.search || parsed.hash) throw new Error('Enter only the Supabase project URL.');
     // The JS client needs the project root, not REST/Auth endpoint URLs.
-    parsed.pathname = parsed.pathname.replace(/\/(rest|auth|storage|functions)\/v1\/?$/, '').replace(/\/+$/, '');
-    if (parsed.pathname) throw new Error('Use the root project URL, for example https://your-project.supabase.co, without a path.');
+    const path = parsed.pathname.replace(/\/(rest|auth|storage|functions)\/v1\/?$/, '').replace(/\/+$/, '');
+    if (path) throw new Error('Use the root project URL, for example https://your-project.supabase.co, without a path.');
     cfg.supabaseUrl = parsed.origin;
     supabaseClient = window.supabase.createClient(cfg.supabaseUrl, cfg.supabaseAnonKey);
   } catch (e) { supabaseInitError = e.message || 'Check your Supabase project URL.'; }
