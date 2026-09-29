@@ -80,12 +80,16 @@
         const legacyWishlistFile = Array.isArray(parsed) && /wish/i.test(file.name);
         const incomingItems = Array.isArray(parsed) ? (legacyWishlistFile ? [] : parsed) : normalizeItems(parsed);
         const incomingWishlist = Array.isArray(parsed) ? (legacyWishlistFile ? parsed : []) : normalizeWishlist(parsed);
-        const existing = new Set(data.items.map(i => i.title.toLowerCase()));
+        const existingIds = new Set(data.items.map(i => String(i.id)).filter(Boolean));
+        const itemKey = i => [normalizeSearch(i.title), i.productionYear || '', i.mediaType || 'Movie', i.format || 'Unknown', i.jellyfinId || ''].join('|');
+        const existingKeys = new Set(data.items.map(itemKey));
         let added = 0;
         incomingItems.forEach(i => {
-          if (i && i.title && !existing.has(i.title.toLowerCase())) {
+          const key = i && i.title ? itemKey(i) : '';
+          if (i && i.title && !existingIds.has(String(i.id)) && !existingKeys.has(key)) {
             data.items.push({ ...i, id: i.id || Date.now().toString(36) + Math.random().toString(36).slice(2,6), title: i.title, format: i.format || 'Unknown', barcode: i.barcode || '', cover: sanitizeCoverUrl(i.cover), added: i.added || new Date().toISOString() });
-            existing.add(i.title.toLowerCase());
+            existingIds.add(String(i.id || ''));
+            existingKeys.add(key);
             added++;
           }
         });

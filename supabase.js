@@ -67,6 +67,11 @@ function toItemRow(i) {
     media_type: i.mediaType || 'Movie', status: i.status || null,
     provider_ids: i.providerIds || {}, jellyfin_id: i.jellyfinId || null,
     jellyfin_collection_ids: i.jellyfinCollectionIds || [], jellyfin_collection_names: i.jellyfinCollectionNames || [],
+    container: i.container || null, file_size: i.fileSize ?? null, video_label: i.videoLabel || null,
+    video_width: i.videoWidth ?? null, video_height: i.videoHeight ?? null, video_codec: i.videoCodec || null,
+    audio_label: i.audioLabel || null, audio_codec: i.audioCodec || null, has_subtitles: i.hasSubtitles ?? null,
+    played: i.played ?? null, play_count: i.playCount ?? null, last_played: i.lastPlayed || null,
+    unplayed_count: i.unplayedCount ?? null, collection_id: i.collectionId || null,
     user_id: currentUser.id
   };
 }
@@ -76,7 +81,12 @@ function fromItemRow(r) {
     productionYear: r.production_year, premiereDate: r.premiere_date, officialRating: r.official_rating,
     communityRating: r.community_rating, criticRating: r.critic_rating, runtimeMinutes: r.runtime_minutes,
     mediaType: r.media_type, status: r.status, providerIds: r.provider_ids || {}, jellyfinId: r.jellyfin_id,
-    jellyfinCollectionIds: r.jellyfin_collection_ids || [], jellyfinCollectionNames: r.jellyfin_collection_names || []
+    jellyfinCollectionIds: r.jellyfin_collection_ids || [], jellyfinCollectionNames: r.jellyfin_collection_names || [],
+    container: r.container, fileSize: r.file_size, videoLabel: r.video_label,
+    videoWidth: r.video_width, videoHeight: r.video_height, videoCodec: r.video_codec,
+    audioLabel: r.audio_label, audioCodec: r.audio_codec, hasSubtitles: r.has_subtitles,
+    played: r.played, playCount: r.play_count, lastPlayed: r.last_played,
+    unplayedCount: r.unplayed_count, collectionId: r.collection_id
   };
 }
 function toWishRow(i) { return { id: i.id, title: i.title, cover: sanitizeCoverUrl(i.cover), added: i.added || new Date().toISOString(), user_id: currentUser.id }; }
