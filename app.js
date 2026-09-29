@@ -6,18 +6,7 @@
   }
 
   // ---- Auth gate ----
-  document.getElementById('authSaveConfigBtn').addEventListener('click', () => {
-    cfg.supabaseUrl = document.getElementById('authSupabaseUrl').value.trim();
-    cfg.supabaseAnonKey = document.getElementById('authSupabaseKey').value.trim();
-    initSupabase();
-    if (supabaseClient) document.getElementById('authSupabaseUrl').value = cfg.supabaseUrl;
-    saveConfig(cfg);
-    const msg = document.getElementById('authMsg');
-    msg.style.color = supabaseClient ? 'var(--teal)' : 'var(--rust)';
-    msg.textContent = supabaseClient ? 'Saved. Create an account or sign in above.' : supabaseInitError;
-  });
-  if (cfg.supabaseUrl) document.getElementById('authSupabaseUrl').value = cfg.supabaseUrl;
-  if (cfg.supabaseAnonKey) document.getElementById('authSupabaseKey').value = cfg.supabaseAnonKey;
+  initSupabase();
 
   async function handleAuth(action) {
     const email = document.getElementById('authEmail').value.trim();

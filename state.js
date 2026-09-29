@@ -1,11 +1,20 @@
 const CONFIG_KEY = 'reelcheck-config';
   const CACHE_KEY = 'reelcheck-cache';
   const VIEW_KEY = 'reelcheck-view';
+  // Public browser-app credentials. Supabase's anon key is safe to ship in a
+  // client app; database access is restricted by the tables' RLS policies.
+  const APP_SUPABASE_URL = 'https://nxqrjmvghczeygvwzxsl.supabase.co';
+  const APP_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im54cXJqbXZnaGN6ZXlndnd6eHNsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTA2NTk1NzgsImV4cCI6MjEwNjIzNTU3OH0.bolaxF48R_TH6heuIQasn7LzxRfpV8DbhuzlfT6IXgY';
 
   function loadConfig() {
-    try { return JSON.parse(localStorage.getItem(CONFIG_KEY)) || {}; } catch (e) { return {}; }
+    try { return { ...JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}'), supabaseUrl: APP_SUPABASE_URL, supabaseAnonKey: APP_SUPABASE_ANON_KEY }; } catch (e) { return { supabaseUrl: APP_SUPABASE_URL, supabaseAnonKey: APP_SUPABASE_ANON_KEY }; }
   }
-  function saveConfig(c) { try { localStorage.setItem(CONFIG_KEY, JSON.stringify(c)); } catch (e) {} }
+  function saveConfig(c) {
+    try {
+      const { supabaseUrl, supabaseAnonKey, ...userConfig } = c;
+      localStorage.setItem(CONFIG_KEY, JSON.stringify(userConfig));
+    } catch (e) {}
+  }
   function loadCache() { try { return JSON.parse(localStorage.getItem(CACHE_KEY)) || null; } catch (e) { return null; } }
   function persistCache() { try { localStorage.setItem(CACHE_KEY, JSON.stringify(cacheState)); } catch (e) {} }
 
