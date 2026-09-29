@@ -11,7 +11,7 @@ const CONFIG_KEY = 'reelcheck-config';
 
   let cfg = loadConfig();
   // Drop settings from earlier versions of the app (Jellyfin direct-connect,
-  // then later the GitHub-backed storage) that are no longer used.
+  // then later the Supabase-backed storage) that are no longer used.
   ['jfUrl','jfUserId','jfApiKey','owner','repo','libraryPath','wishlistPath','token'].forEach(k => { if (cfg[k] !== undefined) delete cfg[k]; });
   saveConfig(cfg);
   let data = { items: [], wishlist: [] };
@@ -21,7 +21,7 @@ const CONFIG_KEY = 'reelcheck-config';
   let activeType = 'all';
   let cacheState = loadCache() || { userId: null, items: [], wishlist: [], itemsPending: false, wishlistPending: false, timestamp: null };
 
-  function configComplete(c) { return !!(currentUser && c.tmdbToken); }
+  function configComplete() { return !!currentUser; }
   function escapeHtml(s) { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   // Search helper: lowercases, strips accents, and drops every character that
   // isn't a letter or number (hyphens, colons, apostrophes, spaces, etc.), so

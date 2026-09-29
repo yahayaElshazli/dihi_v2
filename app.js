@@ -62,8 +62,9 @@
     reader.onload = async () => {
       try {
         const parsed = JSON.parse(reader.result);
-        const incomingItems = normalizeItems(parsed);
-        const incomingWishlist = normalizeWishlist(parsed);
+        const legacyWishlistFile = Array.isArray(parsed) && /wish/i.test(file.name);
+        const incomingItems = Array.isArray(parsed) ? (legacyWishlistFile ? [] : parsed) : normalizeItems(parsed);
+        const incomingWishlist = Array.isArray(parsed) ? (legacyWishlistFile ? parsed : []) : normalizeWishlist(parsed);
         const existing = new Set(data.items.map(i => i.title.toLowerCase()));
         let added = 0;
         incomingItems.forEach(i => {
@@ -75,14 +76,14 @@
         });
         const wExisting = new Set(data.wishlist.map(i => i.title.toLowerCase()));
         let addedWish = 0;
-        incomingWishlist.forEach(i => { if (i && i.title && !wExisting.has(i.title.toLowerCase())) { data.wishlist.push({ ...i, cover: sanitizeCoverUrl(i.cover) }); wExisting.add(i.title.toLowerCase()); addedWish++; } });
+        incomingWishlist.forEach(i => { if (i && i.title && !wExisting.has(i.title.toLowerCase())) { data.wishlist.push({ ...i, id: i.id || Date.now().toString(36) + Math.random().toString(36).slice(2,6), added: i.added || new Date().toISOString(), cover: sanitizeCoverUrl(i.cover) }); wExisting.add(i.title.toLowerCase()); addedWish++; } });
         renderAll();
-        msg.style.color = 'var(--ink-dim)'; msg.textContent = 'Saving to GitHub…';
+        msg.style.color = 'var(--ink-dim)'; msg.textContent = 'Saving to Supabase…';
         const okItems = await pushFile('items');
         const okWish = addedWish ? await pushFile('wishlist') : true;
         const ok = okItems && okWish;
         msg.style.color = ok ? 'var(--teal)' : 'var(--rust)';
-        msg.textContent = ok ? `Restored ${added} title${added===1?'':'s'} and ${addedWish} wishlist item${addedWish===1?'':'s'}.` : 'Merged locally, but could not save everything to GitHub. Try again.';
+        msg.textContent = ok ? `Restored ${added} title${added===1?'':'s'} and ${addedWish} wishlist item${addedWish===1?'':'s'}.` : 'Merged locally, but could not save everything to Supabase. Try again.';
       } catch (err) {
         msg.style.color = 'var(--rust)'; msg.textContent = "That file didn't look like a valid backup.";
       }
@@ -122,7 +123,7 @@
     const wishList = document.getElementById('wishList');
     const items = [...data.wishlist].sort((a,b) => a.title.localeCompare(b.title));
     if (!items.length) {
-      wishList.innerHTML = `<div class="empty">${!ready ? 'Open Admin to configure GitHub saving.' : 'Nothing on your wishlist yet.'}</div>`;
+      wishList.innerHTML = `<div class="empty">${!ready ? 'Sign in to save.' : 'Nothing on your wishlist yet.'}</div>`;
       renderCheckWishlist();
       return;
     }
@@ -173,7 +174,7 @@
     const title = (link.dataset.title || '').trim();
     const wrap = link.closest('.wish-action') || link;
     if (!title) return;
-    if (!configComplete(cfg)) { link.textContent = 'Open Admin to set up GitHub saving'; return; }
+    if (!configComplete(cfg)) { link.textContent = 'Sign in to save'; return; }
     const key = normalizeSearch(title);
     if (data.wishlist.some(w => normalizeSearch(w.title) === key)) { wrap.textContent = 'Already on your wishlist.'; return; }
     link.dataset.busy = '1';
@@ -181,19 +182,19 @@
     data.wishlist.push({ id: Date.now().toString(36), title, added: new Date().toISOString() });
     const ok = await pushFile('wishlist');
     renderWishlist();
-    wrap.textContent = ok ? 'Added to wishlist ✓' : 'Saved on this device, but syncing to GitHub failed.';
+    wrap.textContent = ok ? 'Added to wishlist ✓' : 'Saved on this device, but syncing to Supabase failed.';
   });
 
   document.getElementById('wishAddBtn').addEventListener('click', async () => {
     const title = document.getElementById('wishTitle').value.trim();
     const msg = document.getElementById('wishMsg');
-    if (!configComplete(cfg)) { msg.style.color = 'var(--rust)'; msg.textContent = 'Open Admin to configure GitHub saving.'; return; }
+    if (!configComplete(cfg)) { msg.style.color = 'var(--rust)'; msg.textContent = 'Sign in to save.'; return; }
     if (!title) { msg.style.color = 'var(--rust)'; msg.textContent = 'Enter a title first.'; return; }
     data.wishlist.push({ id: Date.now().toString(36), title, added: new Date().toISOString() });
-    msg.style.color = 'var(--ink-dim)'; msg.textContent = 'Saving to GitHub…';
+    msg.style.color = 'var(--ink-dim)'; msg.textContent = 'Saving to Supabase…';
     const ok = await pushFile('wishlist');
     msg.style.color = ok ? 'var(--teal)' : 'var(--rust)';
-    msg.textContent = ok ? `Added "${title}" to your wishlist.` : (lastGitHubError || 'Could not save to GitHub. Try again.');
+    msg.textContent = ok ? `Added "${title}" to your wishlist.` : (lastSupabaseError || 'Could not save to Supabase. Try again.');
     if (ok) document.getElementById('wishTitle').value = '';
     renderWishlist();
   });
@@ -214,15 +215,15 @@
     const format = document.getElementById('addFormat').value;
     const barcode = document.getElementById('addBarcode').value.trim();
     const msg = document.getElementById('saveMsg');
-    if (!configComplete(cfg)) { msg.style.color = 'var(--rust)'; msg.textContent = 'Open Admin to configure GitHub saving.'; return; }
+    if (!configComplete(cfg)) { msg.style.color = 'var(--rust)'; msg.textContent = 'Sign in to save.'; return; }
     if (!title) { msg.style.color = 'var(--rust)'; msg.textContent = 'Enter a title first.'; return; }
     msg.style.color = 'var(--ink-dim)'; msg.textContent = 'Fetching cover…';
     const cover = await fetchCover(title, format);
     data.items.push({ id: Date.now().toString(36), title, format, barcode, cover, added: new Date().toISOString(), productionYear: null, premiereDate: null, officialRating: null, communityRating: null, criticRating: null, runtimeMinutes: null, container: null, fileSize: null, videoLabel: null, videoWidth: null, videoHeight: null, videoCodec: null, audioLabel: null, audioCodec: null, hasSubtitles: false, played: false, playCount: 0, lastPlayed: null, mediaType: 'Movie', status: null, unplayedCount: null, providerIds: {}, collectionId: null, jellyfinId: null, jellyfinCollectionIds: [], jellyfinCollectionNames: [] });
-    msg.textContent = 'Saving to GitHub…';
+    msg.textContent = 'Saving to Supabase…';
     const ok = await pushFile('items');
     msg.style.color = ok ? 'var(--teal)' : 'var(--rust)';
-    msg.textContent = ok ? `Added "${title}" to your library.` : (lastGitHubError || 'Could not save to GitHub. Try again.');
+    msg.textContent = ok ? `Added "${title}" to your library.` : (lastSupabaseError || 'Could not save to Supabase. Try again.');
     if (ok) { addTitle.value = ''; document.getElementById('addBarcode').value = ''; dupWarn.style.display = 'none'; }
     renderLibrary();
   });
@@ -231,7 +232,7 @@
   document.getElementById('importBtn').addEventListener('click', async () => {
     const raw = document.getElementById('importText').value;
     const msg = document.getElementById('importMsg');
-    if (!configComplete(cfg)) { msg.style.color = 'var(--rust)'; msg.textContent = 'Set up your GitHub repository above first.'; return; }
+    if (!configComplete(cfg)) { msg.style.color = 'var(--rust)'; msg.textContent = 'Sign in to Supabase first.'; return; }
     const incoming = extractItems(raw);
     if (incoming.jsonError) { msg.style.color = 'var(--rust)'; msg.textContent = "That looked like Jellyfin JSON but wasn't complete — copy the entire response, starting from the very first { and ending at the final }."; return; }
     const list = incoming.items;
@@ -260,13 +261,13 @@
     for (let i = 0; i < fresh.length; i++) {
       msg.style.color = 'var(--ink-dim)';
       msg.textContent = `Fetching covers… (${i+1}/${fresh.length})`;
-      fresh[i].cover = await fetchCover(fresh[i].title, fresh[i].format, fresh[i].productionYear || fresh[i].premiereDate);
+      fresh[i].cover = await fetchCover(fresh[i].title, fresh[i].format, fresh[i].productionYear || fresh[i].premiereDate, fresh[i].mediaType);
     }
     data.items.push(...fresh);
-    msg.textContent = 'Saving to GitHub…';
+    msg.textContent = 'Saving to Supabase…';
     const ok = await pushFile('items');
     msg.style.color = ok ? 'var(--teal)' : 'var(--rust)';
-    msg.textContent = ok ? `Updated ${updated} existing item${updated===1?'':'s'} and added ${fresh.length} new item${fresh.length===1?'':'s'} (movies, series and collections).` : (lastGitHubError || 'Could not save to GitHub. Try again.');
+    msg.textContent = ok ? `Updated ${updated} existing item${updated===1?'':'s'} and added ${fresh.length} new item${fresh.length===1?'':'s'} (movies, series and collections).` : (lastSupabaseError || 'Could not save to Supabase. Try again.');
     if (ok) document.getElementById('importText').value = '';
     renderLibrary();
   });

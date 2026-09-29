@@ -93,7 +93,7 @@
       const noMatches = filterText && normalizeSearch(filterText)
         ? `No matches for "${escapeHtml(filterText)}" in your library. ${wishlistLinkHtml(filterText)}`
         : 'No matches.';
-      libList.innerHTML = `<div class="empty">${!ready ? 'Open Admin to configure GitHub saving.' : (topLevelItems.length ? noMatches : (data.items.length ? 'No movies or series in the library yet.' : 'Nothing added yet — use the Add tab.'))}</div>`;
+      libList.innerHTML = `<div class="empty">${!ready ? 'Sign in to save.' : (topLevelItems.length ? noMatches : (data.items.length ? 'No movies or series in the library yet.' : 'Nothing added yet — use the Add tab.'))}</div>`;
       return;
     }
     if (view === 'grid') {
@@ -137,7 +137,7 @@
     for (let i = 0; i < missing.length; i++) {
       msg.style.color = 'var(--ink-dim)';
       msg.textContent = `Fetching covers… (${i+1}/${missing.length})`;
-      const url = await fetchCover(missing[i].title, missing[i].format, missing[i].productionYear || missing[i].premiereDate);
+      const url = await fetchCover(missing[i].title, missing[i].format, missing[i].productionYear || missing[i].premiereDate, missing[i].mediaType);
       if (url) missing[i].cover = url;
     }
     renderLibrary();
@@ -145,10 +145,10 @@
     msg.style.color = stillMissing ? 'var(--amber)' : 'var(--ink-dim)';
     msg.textContent = stillMissing
       ? `${stillMissing} cover${stillMissing === 1 ? '' : 's'} could not be found. ${lastCoverError || 'Check your TMDB credentials.'}`
-      : 'Saving to GitHub…';
+      : 'Saving to Supabase…';
     const ok = await pushFile('items');
     msg.style.color = ok ? 'var(--teal)' : 'var(--rust)';
-    msg.textContent = ok ? 'Covers updated.' : `Fetched covers, but could not save to GitHub. ${lastGitHubError}`;
+    msg.textContent = ok ? 'Covers updated.' : `Fetched covers, but could not save to Supabase. ${lastSupabaseError}`;
   });
 
   document.getElementById('refreshCoversBtn').addEventListener('click', async () => {
@@ -159,7 +159,7 @@
     for (let i = 0; i < titles.length; i++) {
       msg.style.color = 'var(--ink-dim)';
       msg.textContent = `Refreshing year-matched covers… (${i + 1}/${titles.length})`;
-      const cover = await fetchCover(titles[i].title, titles[i].format, titles[i].productionYear || titles[i].premiereDate);
+      const cover = await fetchCover(titles[i].title, titles[i].format, titles[i].productionYear || titles[i].premiereDate, titles[i].mediaType);
       if (cover) { titles[i].cover = cover; refreshed++; } else missing++;
     }
     renderLibrary();
@@ -168,7 +168,7 @@
     msg.style.color = ok ? (missing ? 'var(--amber)' : 'var(--teal)') : 'var(--rust)';
     msg.textContent = ok
       ? `Updated ${refreshed} cover${refreshed === 1 ? '' : 's'} using release years where available${missing ? `; ${missing} could not be matched` : ''}.`
-      : `Refreshed covers locally, but could not save to GitHub. ${lastGitHubError}`;
+      : `Refreshed covers locally, but could not save to Supabase. ${lastSupabaseError}`;
   });
 
   document.getElementById('clearLibBtn').addEventListener('click', async () => {
@@ -178,8 +178,8 @@
     const prev = data.items;
     data.items = [];
     renderLibrary();
-    msg.style.color = 'var(--ink-dim)'; msg.textContent = 'Saving to GitHub…';
+    msg.style.color = 'var(--ink-dim)'; msg.textContent = 'Saving to Supabase…';
     const ok = await pushFile('items');
     if (ok) { msg.style.color = 'var(--teal)'; msg.textContent = 'Library cleared.'; }
-    else { data.items = prev; renderLibrary(); msg.style.color = 'var(--rust)'; msg.textContent = `Could not save to GitHub — clear undone. ${lastGitHubError || ''}`.trim(); }
+    else { data.items = prev; renderLibrary(); msg.style.color = 'var(--rust)'; msg.textContent = `Could not save to Supabase — clear undone. ${lastSupabaseError || ''}`.trim(); }
   });

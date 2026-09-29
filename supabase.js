@@ -1,11 +1,10 @@
 // ---- Supabase client, auth, and data sync ----
-// This file replaces github.js. It keeps the same two function names the
-// rest of the app already calls — fetchAll() and pushFile(kind) — so
-// library.js, check.js and app.js did not need to change how they save.
+// Supabase auth and data sync. Keep the app-facing fetchAll() and pushFile()
+// functions stable so views can save without knowing the storage details.
 
 let supabaseClient = null;
 let currentUser = null;
-let lastGitHubError = ''; // kept under this name so existing UI messages elsewhere don't need edits
+let lastSupabaseError = '';
 
 function initSupabase() {
   if (!cfg.supabaseUrl || !cfg.supabaseAnonKey || !window.supabase) { supabaseClient = null; return; }
@@ -78,26 +77,29 @@ function markSynced(kind) {
   persistCache();
 }
 
-// Mirrors the in-memory array into the table: replaces every row this user
-// owns with the current array. Simple and correct for one person's library;
-// if you ever use the app from two devices at once, the last save wins,
-// same as the old whole-file GitHub approach.
+// Upsert changed/current rows before deleting removed rows. This avoids the
+// old delete-then-insert failure mode that could erase a whole collection.
 async function pushFile(kind) {
-  if (!supabaseClient || !currentUser) { lastGitHubError = 'Not signed in.'; markPending(kind); return false; }
+  if (!supabaseClient || !currentUser) { lastSupabaseError = 'Not signed in.'; markPending(kind); return false; }
   const table = kind === 'items' ? 'items' : 'wishlist';
   const toRow = kind === 'items' ? toItemRow : toWishRow;
-  const payload = (kind === 'items' ? data.items : data.wishlist).map(toRow);
+  if (kind !== 'items' && kind !== 'wishlist') throw new Error(`Unknown data set: ${kind}`);
+  const records = kind === 'items' ? data.items : data.wishlist;
+  const payload = records.map(toRow);
   try {
-    const del = await supabaseClient.from(table).delete().eq('user_id', currentUser.id);
-    if (del.error) throw del.error;
     if (payload.length) {
-      const ins = await supabaseClient.from(table).insert(payload);
-      if (ins.error) throw ins.error;
+      const upsert = await supabaseClient.from(table).upsert(payload, { onConflict: 'user_id,id' });
+      if (upsert.error) throw upsert.error;
     }
+    let delQuery = supabaseClient.from(table).delete().eq('user_id', currentUser.id);
+    const ids = records.map(i => i.id).filter(id => id != null).map(String);
+    if (ids.length) delQuery = delQuery.not('id', 'in', `(${ids.map(id => `"${id.replace(/"/g, '\\"')}"`).join(',')})`);
+    const del = await delQuery;
+    if (del.error) throw del.error;
     markSynced(kind);
     return true;
   } catch (e) {
-    lastGitHubError = (e && e.message) ? `Supabase error — ${e.message}` : 'Could not save to Supabase.';
+    lastSupabaseError = (e && e.message) ? `Supabase error — ${e.message}` : 'Could not save to Supabase.';
     markPending(kind);
     return false;
   }
@@ -107,7 +109,8 @@ async function fetchAll() {
   initSupabase();
   if (!supabaseClient) { showAuthGate(); return; }
 
-  const { data: sessionData } = await supabaseClient.auth.getSession();
+  const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+  if (sessionError) { showAuthGate(sessionError.message); return; }
   if (!sessionData || !sessionData.session) { showAuthGate(); return; }
   currentUser = sessionData.session.user;
   document.getElementById('acctEmail').textContent = currentUser.email || '';
