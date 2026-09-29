@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Do I Have It</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="./css/app.css">
+</head>
+<body>
+
+<div class="auth-gate" id="authGate">
+  <div class="auth-card">
+    <h1>Do I Have It</h1>
+    <p>Sign in to sync your library.</p>
+    <div class="field">
+      <label for="authEmail">Email</label>
+      <input type="email" id="authEmail" autocomplete="username">
+    </div>
+    <div class="field">
+      <label for="authPassword">Password</label>
+      <input type="password" id="authPassword" autocomplete="current-password">
+    </div>
+    <button class="btn-primary" id="authSignInBtn">Sign in</button>
+    <button class="btn-secondary" id="authSignUpBtn" style="margin-top:8px;">Create account</button>
+    <p id="authMsg" style="font-size:13px; margin-top:10px; min-height:1em;"></p>
+
+    <details style="margin-top:18px;">
+      <summary style="color:var(--ink-dim); font-size:12px; cursor:pointer;">First time here? Set up your Supabase project</summary>
+      <p style="color:var(--ink-dim); font-size:12px; line-height:1.5; margin:10px 0;">Paste the URL and anon public key from your Supabase project (Settings → API), save, then create an account above.</p>
+      <div class="field">
+        <label for="authSupabaseUrl">Supabase project URL</label>
+        <input type="text" id="authSupabaseUrl" placeholder="https://xxxx.supabase.co" autocomplete="off">
+      </div>
+      <div class="field">
+        <label for="authSupabaseKey">Supabase anon public key</label>
+        <input type="text" id="authSupabaseKey" placeholder="eyJ..." autocomplete="off" style="font-family:monospace; font-size:12px;">
+      </div>
+      <button class="btn-secondary" id="authSaveConfigBtn">Save Supabase settings</button>
+    </details>
+  </div>
+</div>
+
+<div id="appRoot" style="display:none;">
+
+<header>
+  <div class="header-row">
+    <div><h1>Do I Have It</h1><p>Your disc collection, always in your pocket</p></div>
+  </div>
+</header>
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<aside class="drawer" id="drawer" aria-label="App menu">
+  <h2>Menu</h2>
+  <p>Occasional settings and maintenance.</p>
+  <button id="adminMenuBtn">⚙ Admin</button>
+</aside>
+
+
+<main>
+
+  <section id="tab-check" class="tab active">
+    <div class="field">
+      <label for="checkInput">Search by title</label>
+      <input type="text" id="checkInput" placeholder="e.g. Paddington 2" autocomplete="off">
+    </div>
+    <div id="checkResults"></div>
+    <section class="check-wishlist" aria-labelledby="checkWishlistHeading">
+      <h2 id="checkWishlistHeading">On your wishlist</h2>
+      <div id="checkWishlistGrid"></div>
+    </section>
+  </section>
+
+  <section id="tab-library" class="tab">
+    <div class="viewToggle">
+      <button id="viewGridBtn">▦ Grid</button>
+      <button id="viewListBtn">≡ List</button>
+    </div>
+    <div class="field">
+      <label for="libFilter">Filter your library<span class="count-pill" id="libCount">0</span></label>
+      <input type="text" id="libFilter" placeholder="Filter..." autocomplete="off">
+    </div>
+    <div class="chipRow" id="typeChips" style="margin-bottom:8px;">
+      <button class="chip active" data-type="all">All</button>
+      <button class="chip" data-type="Movie">Movies</button>
+      <button class="chip" data-type="Series">Series</button>
+    </div>
+    <div class="chipRow" id="formatChips">
+      <button class="chip active" data-fmt="all">All formats</button>
+      <button class="chip" data-fmt="DVD">DVD</button>
+      <button class="chip" data-fmt="Blu-ray">Blu-ray</button>
+      <button class="chip" data-fmt="4K UHD">4K UHD</button>
+    </div>
+    <div id="libList"></div>
+    <p style="color:var(--ink-dim); font-size:12px; margin-top:18px; text-align:center;">Library maintenance is in <strong>Admin</strong>.</p>
+  </section>
+
+  <section id="tab-wishlist" class="tab">
+    <div class="field">
+      <label for="wishTitle">Add a title you're hunting for</label>
+      <input type="text" id="wishTitle" placeholder="Film or show title" autocomplete="off">
+    </div>
+    <button class="btn-primary" id="wishAddBtn">Add to wishlist</button>
+    <p id="wishMsg" style="color:var(--teal); font-size:13px; margin-top:10px;"></p>
+    <div id="wishList" style="margin-top:18px;"></div>
+  </section>
+
+  <section id="tab-add" class="tab">
+    <div class="field">
+      <label for="addTitle">Title</label>
+      <input type="text" id="addTitle" placeholder="Film or show title" autocomplete="off">
+    </div>
+    <p class="warn" id="dupWarn" style="display:none;"></p>
+    <div class="field">
+      <label for="addFormat">Format</label>
+      <select id="addFormat">
+        <option>DVD</option><option>Blu-ray</option><option>4K UHD</option><option>Box set</option><option>Unknown</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="addBarcode">Barcode (optional)</label>
+      <input type="text" id="addBarcode" placeholder="Enter UPC/EAN if known" autocomplete="off">
+    </div>
+    <button class="btn-primary" id="saveBtn">Add to library</button>
+    <p id="saveMsg" style="color:var(--teal); font-size:13px; margin-top:10px;"></p>
+  </section>
+
+  <section id="tab-admin" class="tab">
+    <div class="admin-section">
+      <h2>Library maintenance</h2>
+      <p>These are the jobs you only need occasionally.</p>
+      <div class="admin-actions">
+        <button class="btn-secondary" id="fetchCoversBtn">🖼 Fetch missing covers</button>
+        <button class="btn-secondary" id="refreshCoversBtn">🖼 Refresh covers by year</button>
+        <button class="btn-secondary" id="clearLibBtn">🗑 Clear library</button>
+        <button class="btn-secondary" id="exportBtn">⬇ Export backup</button>
+        <button class="btn-secondary" id="restoreBtn">⬆ Restore backup</button>
+      </div>
+      <input type="file" id="restoreFile" accept="application/json" style="display:none;">
+      <p id="backupMsg" style="color:var(--teal); font-size:13px; margin-top:10px; margin-bottom:0;"></p>
+    </div>
+
+    <div class="admin-section">
+      <h2>Account</h2>
+      <p>Signed in as <strong id="acctEmail"></strong>.</p>
+      <button class="btn-secondary" id="signOutBtn">Sign out</button>
+    </div>
+
+    <div id="syncStatus" style="padding:12px 14px; border-radius:10px; background:var(--panel); border:1px solid var(--line); font-size:13px; color:var(--ink-dim); margin-bottom:16px;">Connection status appears here.</div>
+
+    <div class="field">
+      <label for="tmdbToken">TMDB API Read Access Token</label>
+      <input type="password" id="tmdbToken" placeholder="eyJ..." autocomplete="off" style="font-family:monospace; font-size:13px;">
+    </div>
+    <div style="display:flex; gap:10px;">
+      <button class="btn-primary" id="saveTmdbBtn" style="flex:1;">Save TMDB token</button>
+      <button class="btn-secondary" id="resyncBtn" style="flex:1;">Reload library</button>
+    </div>
+
+    <hr style="border:none; border-top:1px solid var(--line); margin:24px 0;">
+
+    <div class="field">
+      <label for="importText">Paste titles, or paste JSON from Jellyfin</label>
+      <textarea id="importText" rows="8" placeholder="One title per line, e.g.&#10;Paddington 2&#10;The Grand Budapest Hotel&#10;&#10;...or paste a whole Jellyfin API response and it’ll pull movies, series and collections + guess format + fetch covers automatically." style="width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--line); background:var(--panel); color:var(--ink); font-size:15px; font-family:inherit; resize:vertical;"></textarea>
+    </div>
+    <button class="btn-primary" id="importBtn">Import / update from Jellyfin</button>
+    <p id="importMsg" style="color:var(--teal); font-size:13px; margin-top:10px;"></p>
+
+  </section>
+
+</main>
+
+<nav class="bottom-nav" aria-label="Main navigation">
+  <button type="button" data-tab="check" class="active" aria-label="Check"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"></circle><path d="m20 20-4-4"></path></svg><span class="sr-only">Check</span></button>
+  <button type="button" data-tab="library" aria-label="Library"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 7v14"></path><path d="M3 18V5a2 2 0 0 1 2-2h4a3 3 0 0 1 3 3 3 3 0 0 1 3-3h4a2 2 0 0 1 2 2v13a1 1 0 0 1-1 1h-5a3 3 0 0 0-3 3 3 3 0 0 0-3-3H4a1 1 0 0 1-1-1Z"></path></svg><span class="sr-only">Library</span></button>
+  <button type="button" data-tab="wishlist" aria-label="Wishlist"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"></path><path d="M4 6h.01M4 12h.01M4 18h.01"></path></svg><span class="sr-only">Wishlist</span></button>
+  <button type="button" data-tab="add" aria-label="Add"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"></path></svg><span class="sr-only">Add</span></button>
+  <button type="button" id="menuBtn" class="nav-menu-btn" aria-label="Menu" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg><span class="sr-only">Menu</span></button>
+</nav>
+
+</div><!-- /#appRoot -->
+
+<script defer src="./js/state.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script defer src="./js/supabase.js"></script>
+<script defer src="./js/tmdb.js"></script>
+<script defer src="./js/jellyfin-import.js"></script>
+<script defer src="./js/check.js"></script>
+<script defer src="./js/library.js"></script>
+<script defer src="./js/navigation.js"></script>
+<script defer src="./js/app.js"></script>
+</body>
+</html>
