@@ -152,7 +152,7 @@
 
     <div class="field">
       <label for="importText">Paste titles, or paste JSON from Jellyfin</label>
-      <textarea id="importText" rows="8" placeholder="One title per line, e.g.&#10;Paddington 2&#10;The Grand Budapest Hotel&#10;&#10;...or paste a whole Jellyfin API response and it’ll pull movies, series and collections + guess format + fetch covers automatically." style="width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--line); background:var(--panel); color:var(--ink); font-size:15px; font-family:inherit; resize:vertical;"></textarea>
+      <textarea id="importText" rows="8" placeholder="One title per line, e.g.&#10;Paddington 2&#10;The Grand Budapest Hotel&#10;&#10;...or paste a Jellyfin response with Fields=MediaSources,MediaStreams to import titles, infer formats from video height, and fetch covers." style="width:100%; padding:12px 14px; border-radius:10px; border:1px solid var(--line); background:var(--panel); color:var(--ink); font-size:15px; font-family:inherit; resize:vertical;"></textarea>
     </div>
     <button class="btn-primary" id="importBtn">Import / update from Jellyfin</button>
     <p id="importMsg" style="color:var(--teal); font-size:13px; margin-top:10px;"></p>
