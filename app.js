@@ -283,9 +283,12 @@
     }
     data.items.push(...fresh);
     msg.textContent = 'Saving to Supabase…';
+    const missingCoverCount = missingCovers.filter(item => !item.cover).length;
     const ok = await pushFile('items');
     msg.style.color = ok ? 'var(--teal)' : 'var(--rust)';
-    msg.textContent = ok ? `Updated ${updated} existing item${updated===1?'':'s'} and added ${fresh.length} new item${fresh.length===1?'':'s'} (movies, series and collections).` : (lastSupabaseError || 'Could not save to Supabase. Try again.');
+    msg.textContent = ok
+      ? `Updated ${updated} existing item${updated===1?'':'s'} and added ${fresh.length} new item${fresh.length===1?'':'s'} (movies, series and collections).${missingCoverCount ? ` ${missingCoverCount} cover${missingCoverCount===1?'':'s'} could not be fetched. ${lastCoverError || 'Check the TMDB token and search result.'}` : ''}`
+      : (lastSupabaseError || 'Could not save to Supabase. Try again.');
     if (ok) document.getElementById('importText').value = '';
     renderLibrary();
   });

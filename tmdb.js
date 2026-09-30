@@ -2,7 +2,8 @@
 let lastCoverError = '';
 async function fetchCover(title, format = 'Movie', year = '', mediaType = '') {
   const token = cfg.tmdbToken;
-  if (!token || !title) return null;
+  if (!title) return null;
+  if (!token) { lastCoverError = 'TMDB token is not saved in this browser. Add it in Admin and save it, then retry.'; return null; }
   const isSeries = /series|tv/i.test(`${mediaType} ${format}`);
   const kind = isSeries ? 'tv' : 'movie';
   const params = new URLSearchParams({ query: title, include_adult: 'false' });
@@ -15,7 +16,7 @@ async function fetchCover(title, format = 'Movie', year = '', mediaType = '') {
     if (!response.ok) { lastCoverError = `TMDB request failed (${response.status}).`; return null; }
     const result = await response.json();
     const path = result.results?.[0]?.poster_path;
-    lastCoverError = '';
+    lastCoverError = path ? '' : `TMDB returned no poster for ${title}.`;
     return path ? `https://image.tmdb.org/t/p/w500${path}` : null;
   } catch (_) { lastCoverError = 'Could not reach TMDB.'; return null; }
 }
