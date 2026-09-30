@@ -15,15 +15,17 @@
   <div class="auth-card">
     <h1>Do I Have It</h1>
     <p>Sign in to sync your library.</p>
-    <div class="field">
-      <label for="authEmail">Email</label>
-      <input type="email" id="authEmail" autocomplete="username">
-    </div>
-    <div class="field">
-      <label for="authPassword">Password</label>
-      <input type="password" id="authPassword" autocomplete="current-password">
-    </div>
-    <button type="button" class="btn-primary" id="authSignInBtn">Sign in</button>
+    <form id="authForm" autocomplete="on">
+      <div class="field">
+        <label for="authEmail">Email</label>
+        <input type="email" id="authEmail" name="email" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="authPassword">Password</label>
+        <input type="password" id="authPassword" name="password" autocomplete="current-password" required>
+      </div>
+      <button type="submit" class="btn-primary" id="authSignInBtn">Sign in</button>
+    </form>
     <button type="button" class="btn-secondary" id="authSignUpBtn" style="margin-top:8px;">Create account</button>
     <p id="authMsg" style="font-size:13px; margin-top:10px; min-height:1em;"></p>
 

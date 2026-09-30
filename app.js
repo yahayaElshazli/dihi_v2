@@ -34,7 +34,10 @@
       button.disabled = false;
     }
   }
-  document.getElementById('authSignInBtn').addEventListener('click', () => handleAuth('signin'));
+  document.getElementById('authForm').addEventListener('submit', event => {
+    event.preventDefault();
+    handleAuth('signin');
+  });
   document.getElementById('authSignUpBtn').addEventListener('click', () => handleAuth('signup'));
 
   document.getElementById('signOutBtn').addEventListener('click', signOutUser);
