@@ -255,6 +255,7 @@
     const importKey = i => `${i.mediaType || 'Movie'}|${String(i.title || '').trim().toLowerCase()}|${i.productionYear || ''}`;
     const existing = new Map(data.items.map(i => [importKey(i), i]));
     const fresh = [];
+    const coverTargets = new Set();
     let updated = 0;
     list.forEach(t => {
       const key = importKey(t);
@@ -264,16 +265,21 @@
           if (k !== 'title' && k !== 'format' && t[k] !== null && t[k] !== '' && t[k] !== undefined) existingItem[k] = t[k];
         });
         if ((!existingItem.format || existingItem.format === 'Unknown') && t.format) existingItem.format = t.format;
+        if (!existingItem.cover) coverTargets.add(existingItem);
         updated++;
       } else {
-        fresh.push({ ...t, id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), title: t.title, format: t.format || 'Unknown', barcode: '', cover: null, added: new Date().toISOString() });
-        existing.set(key, fresh[fresh.length - 1]);
+        const newItem = { ...t, id: Date.now().toString(36) + Math.random().toString(36).slice(2,6), title: t.title, format: t.format || 'Unknown', barcode: '', cover: null, added: new Date().toISOString() };
+        fresh.push(newItem);
+        coverTargets.add(newItem);
+        existing.set(key, newItem);
       }
     });
-    for (let i = 0; i < fresh.length; i++) {
+    const missingCovers = [...coverTargets].filter(item => !item.cover);
+    for (let i = 0; i < missingCovers.length; i++) {
       msg.style.color = 'var(--ink-dim)';
-      msg.textContent = `Fetching covers… (${i+1}/${fresh.length})`;
-      fresh[i].cover = await fetchCover(fresh[i].title, fresh[i].format, fresh[i].productionYear || fresh[i].premiereDate, fresh[i].mediaType);
+      msg.textContent = `Fetching covers… (${i+1}/${missingCovers.length})`;
+      const item = missingCovers[i];
+      item.cover = await fetchCover(item.title, item.format, item.productionYear || item.premiereDate, item.mediaType);
     }
     data.items.push(...fresh);
     msg.textContent = 'Saving to Supabase…';
