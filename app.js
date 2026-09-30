@@ -41,6 +41,7 @@
   document.getElementById('authSignUpBtn').addEventListener('click', () => handleAuth('signup'));
 
   document.getElementById('signOutBtn').addEventListener('click', signOutUser);
+  document.getElementById('menuSignOutBtn').addEventListener('click', signOutUser);
 
   document.getElementById('saveTmdbBtn').addEventListener('click', () => {
     cfg.tmdbToken = document.getElementById('tmdbToken').value.trim();

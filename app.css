@@ -25,11 +25,11 @@
   main { flex: 1; overflow-y: auto; padding: 16px 20px 112px; }
   .field { margin-bottom: 14px; }
   .field label { display: block; font-size: 12px; color: var(--ink-dim); margin-bottom: 6px; }
-  input[type=text], select {
+  input[type=text], input[type=email], input[type=password], select {
     width: 100%; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line);
     background: var(--panel); color: var(--ink); font-size: 16px; font-family: inherit;
   }
-  input[type=text]:focus, select:focus { outline: 2px solid var(--amber); outline-offset: 1px; }
+  input[type=text]:focus, input[type=email]:focus, input[type=password]:focus, select:focus { outline: 2px solid var(--amber); outline-offset: 1px; }
   button { font-family: inherit; font-size: 15px; font-weight: 500; cursor: pointer; border: none; border-radius: 10px; padding: 13px 16px; }
   .btn-primary { background: var(--amber); color: var(--cream-light); width: 100%; }
   .btn-secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); width: 100%; }
