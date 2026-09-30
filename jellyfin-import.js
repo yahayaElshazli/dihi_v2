@@ -14,12 +14,13 @@ function getJellyfinVideoInfo(item) {
   const width = Number(stream?.Width || stream?.width || 0) || null;
   const displayTitle = stream?.DisplayTitle || stream?.displayTitle || '';
   const displayHeight = Number(displayTitle.match(/(\d{3,4})p/i)?.[1] || 0);
+  const resolutionHeight = displayHeight || height;
   const anamorphic = stream?.IsAnamorphic === true || stream?.isAnamorphic === true;
   const source = sources[0] || {};
-  const dvdHeight = (height >= 480 && height <= 576)
-    || (width >= 700 && height >= 400 && height < 480 && (anamorphic || (displayHeight >= 480 && displayHeight <= 576)));
-  const format = height >= 2000 ? '4K UHD'
-    : height >= 1000 ? 'Blu-ray'
+  const dvdHeight = (resolutionHeight >= 480 && resolutionHeight <= 576)
+    || (width >= 700 && height >= 400 && height < 480 && anamorphic);
+  const format = resolutionHeight >= 2000 || width >= 3500 ? '4K UHD'
+    : resolutionHeight >= 1000 || width >= 1800 ? 'Blu-ray'
     : dvdHeight ? 'DVD'
     : null;
   return {
