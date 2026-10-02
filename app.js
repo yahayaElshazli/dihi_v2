@@ -229,9 +229,12 @@
     const msg = document.getElementById('saveMsg');
     if (!configComplete(cfg)) { msg.style.color = 'var(--rust)'; msg.textContent = 'Sign in to save.'; return; }
     if (!title) { msg.style.color = 'var(--rust)'; msg.textContent = 'Enter a title first.'; return; }
-    msg.style.color = 'var(--ink-dim)'; msg.textContent = 'Fetching cover…';
-    const cover = await fetchCover(title, format);
-    data.items.push({ id: Date.now().toString(36), title, format, barcode, cover, added: new Date().toISOString(), productionYear: null, premiereDate: null, officialRating: null, communityRating: null, criticRating: null, runtimeMinutes: null, container: null, fileSize: null, videoLabel: null, videoWidth: null, videoHeight: null, videoCodec: null, audioLabel: null, audioCodec: null, hasSubtitles: false, played: false, playCount: 0, lastPlayed: null, mediaType: 'Movie', status: null, unplayedCount: null, providerIds: {}, collectionId: null, jellyfinId: null, jellyfinCollectionIds: [], jellyfinCollectionNames: [] });
+    msg.style.color = 'var(--ink-dim)'; msg.textContent = 'Looking up movie details and cover…';
+    const [metadata, cover] = await Promise.all([
+      fetchMovieMetadata(title),
+      fetchCover(title, format)
+    ]);
+    data.items.push({ id: Date.now().toString(36), title, format, barcode, cover, added: new Date().toISOString(), productionYear: null, premiereDate: null, officialRating: null, communityRating: null, criticRating: null, runtimeMinutes: null, container: null, fileSize: null, videoLabel: null, videoWidth: null, videoHeight: null, videoCodec: null, audioLabel: null, audioCodec: null, hasSubtitles: false, played: false, playCount: 0, lastPlayed: null, mediaType: 'Movie', status: null, unplayedCount: null, providerIds: {}, collectionId: null, jellyfinId: null, jellyfinCollectionIds: [], jellyfinCollectionNames: [], ...metadata });
     msg.textContent = 'Saving to Supabase…';
     const ok = await pushFile('items');
     msg.style.color = ok ? 'var(--teal)' : 'var(--rust)';
