@@ -105,7 +105,7 @@
         </div>`).join('')}</div>`;
     } else {
       libList.innerHTML = items.map(i => `
-        <div class="libitem">
+        <div class="libitem" data-library-item="${escapeHtml(String(i.id))}">
           <div class="libitem-main" role="button" tabindex="0" aria-expanded="false">
             ${coverOrPlaceholder(i, 'thumb')}
             <div class="meta">
@@ -114,7 +114,14 @@
             </div>
             <button type="button" class="expand" aria-label="Show details">⌄</button>
           </div>
-          <div class="libitem-details"><div class="detail-grid">${detailRows(i)}</div></div>
+          <div class="libitem-details">
+            <div class="detail-grid">${detailRows(i)}</div>
+            ${(i.mediaType || 'Movie') === 'Movie' ? `<div class="libitem-actions">
+              <button type="button" class="btn-secondary" data-library-action="update">Update info</button>
+              <button type="button" class="btn-secondary remove-item-btn" data-library-action="remove">Remove</button>
+              <p class="library-action-msg" aria-live="polite"></p>
+            </div>` : ''}
+          </div>
         </div>`).join('');
       libList.querySelectorAll('.libitem-main').forEach(row => {
         const toggle = () => {
@@ -128,6 +135,80 @@
         row.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && !e.target.closest('button')) { e.preventDefault(); toggle(); } });
       });
     }
+    libList.querySelectorAll('[data-library-action]').forEach(button => {
+      button.addEventListener('click', async event => {
+        event.stopPropagation();
+        const row = button.closest('.libitem');
+        const title = row.querySelector('.title').textContent;
+        const action = button.dataset.libraryAction;
+        if (action === 'remove') {
+          if (!confirm(`Remove “${title}” from your library? This cannot be undone.`)) return;
+          const item = data.items.find(entry => String(entry.id) === row.dataset.libraryItem);
+          const index = data.items.indexOf(item);
+          if (index < 0) return;
+          const [removed] = data.items.splice(index, 1);
+          renderLibrary();
+          if (!await pushFile('items')) {
+            data.items.splice(index, 0, removed);
+            renderLibrary();
+            alert(`Could not remove “${title}” from your library. ${lastSupabaseError || ''}`.trim());
+          }
+          return;
+        }
+
+        const item = data.items.find(entry => String(entry.id) === row.dataset.libraryItem);
+        if (!item) return;
+        const message = row.querySelector('.library-action-msg');
+        const updateButton = row.querySelector('[data-library-action="update"]');
+        updateButton.disabled = true;
+        message.textContent = 'Looking up missing info on TMDB…';
+        const [metadata, cover] = await Promise.all([
+          fetchMovieMetadata(item.title, item.productionYear || item.premiereDate),
+          item.cover ? Promise.resolve(null) : fetchCover(item.title, item.format, item.productionYear || item.premiereDate, item.mediaType)
+        ]);
+        const changed = [];
+        const isMissing = value => value === null || value === undefined || value === '';
+        Object.entries(metadata).forEach(([key, value]) => {
+          if (key === 'providerIds') {
+            const ids = { ...(item.providerIds || {}) };
+            let addedId = false;
+            Object.entries(value || {}).forEach(([provider, id]) => {
+              if (isMissing(ids[provider]) && !isMissing(id)) { ids[provider] = id; addedId = true; }
+            });
+            if (addedId) {
+              changed.push(['providerIds', item.providerIds]);
+              item.providerIds = ids;
+            }
+          } else if (isMissing(item[key]) && !isMissing(value)) {
+            changed.push([key, item[key]]);
+            item[key] = value;
+          }
+        });
+        if (isMissing(item.cover) && cover) { changed.push(['cover', item.cover]); item.cover = cover; }
+        if (!changed.length) {
+          message.textContent = 'No missing info found, or TMDB had no match.';
+          updateButton.disabled = false;
+          return;
+        }
+        message.textContent = 'Saving updated info…';
+        renderLibrary();
+        const updatedRow = [...libList.querySelectorAll('.libitem')].find(entry => entry.dataset.libraryItem === row.dataset.libraryItem);
+        if (updatedRow) {
+          updatedRow.classList.add('open');
+          const main = updatedRow.querySelector('.libitem-main');
+          main.setAttribute('aria-expanded', 'true');
+          main.querySelector('.expand').textContent = '⌃';
+          main.querySelector('.expand').setAttribute('aria-label', 'Hide details');
+        }
+        if (await pushFile('items')) {
+          updatedRow?.querySelector('.library-action-msg')?.replaceChildren(`Updated ${changed.length} missing field${changed.length === 1 ? '' : 's'}.`);
+        } else {
+          changed.forEach(([key, previous]) => { item[key] = previous; });
+          renderLibrary();
+          alert(`Could not save the TMDB updates. ${lastSupabaseError || ''}`.trim());
+        }
+      });
+    });
   }
 
   document.getElementById('fetchCoversBtn').addEventListener('click', async () => {

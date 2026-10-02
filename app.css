@@ -69,6 +69,10 @@
   .detail-grid { display: grid; grid-template-columns: minmax(105px, 0.8fr) minmax(150px, 1.5fr); gap: 7px 12px; padding: 11px 12px; border-radius: 10px; background: var(--panel); border: 1px solid var(--line); font-size: 12px; }
   .detail-label { color: var(--ink-dim); }
   .detail-value { overflow-wrap: anywhere; }
+  .libitem-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 10px; }
+  .libitem-actions button { min-height: 38px; padding: 8px 12px; font-size: 13px; }
+  .libitem-actions .remove-item-btn { color: var(--rust); border-color: var(--rust); }
+  .library-action-msg { grid-column: 1 / -1; min-height: 1em; margin: 0; color: var(--ink-dim); font-size: 12px; }
   .empty { color: var(--ink-dim); font-size: 14px; padding: 30px 0; text-align: center; }
   .libgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px,1fr)); gap: 14px 12px; }
   .gridcard { position: relative; }
