@@ -34,7 +34,7 @@
   .btn-primary { background: var(--amber); color: var(--cream-light); width: 100%; }
   .btn-secondary { background: transparent; color: var(--ink); border: 1px solid var(--line); width: 100%; }
   .btn-primary:active, .btn-secondary:active { opacity: 0.8; }
-  .warn { font-size: 12px; color: var(--amber); margin-top: -8px; margin-bottom: 12px; }
+  .warn { font-size: 12px; color: var(--rust); margin-top: -8px; margin-bottom: 12px; }
   .result { margin-top: 16px; padding: 16px; border-radius: 12px; font-size: 15px; line-height: 1.4; }
   .result.own, .result.missing, .result.do-not-buy { background: var(--alert-red); color: var(--cream-light); border: 1px solid var(--alert-red); }
   .result.safe-buy, .result.upgrade { background: var(--pale-green); color: var(--forest); border: 1px solid #a8c5a9; }
