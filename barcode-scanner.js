@@ -63,6 +63,7 @@
           }
           barcodeInput.value = code;
           barcodeInput.dispatchEvent(new Event('input', { bubbles: true }));
+          barcodeInput.dispatchEvent(new CustomEvent('barcode:scanned', { bubbles: true, detail: { barcode: code } }));
           setMessage('Barcode scanned.');
           await stopScanner();
           if (sheet.open) sheet.close();

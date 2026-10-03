@@ -27,6 +27,7 @@
   .barcode-entry { display: flex; gap: 8px; }
   .barcode-entry input { min-width: 0; flex: 1; }
   .barcode-entry button { width: auto; min-width: 78px; padding-inline: 14px; }
+  .barcode-lookup-msg { min-height: 1em; margin: 6px 0 0; color: var(--ink-dim); font-size: 12px; }
   .barcode-scan-sheet { max-height: min(90vh, 720px); overflow-y: auto; }
   .barcode-scan-help { margin: 0 0 12px; color: var(--ink-dim); font-size: 13px; }
   .barcode-scanner-view { min-height: 180px; overflow: hidden; border-radius: 10px; background: #111; }

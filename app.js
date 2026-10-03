@@ -232,6 +232,64 @@
   // ---- Add tab ----
   const addTitle = document.getElementById('addTitle');
   const dupWarn = document.getElementById('dupWarn');
+  const addBarcode = document.getElementById('addBarcode');
+  const barcodeLookupMsg = document.getElementById('barcodeLookupMsg');
+  let scannedMovieData = null;
+  let barcodeLookupSequence = 0;
+
+  function barcodeProductTitle(product) {
+    return String(product?.title || product?.name || '').replace(/\b(?:blu[ -]?ray|4k\s*(?:ultra\s*)?hd|ultra\s*hd|dvd(?:-video)?)\b/gi, ' ')
+      .replace(/[\[\](){}]/g, ' ').replace(/\s+/g, ' ').replace(/\s*[-:|,]\s*$/, '').trim();
+  }
+
+  addBarcode.addEventListener('barcode:scanned', async event => {
+    const barcode = String(event.detail?.barcode || addBarcode.value).trim();
+    const request = ++barcodeLookupSequence;
+    scannedMovieData = null;
+    barcodeLookupMsg.style.color = 'var(--ink-dim)';
+    barcodeLookupMsg.textContent = 'Looking up barcode…';
+    try {
+      const response = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(barcode)}`, {
+        headers: { Accept: 'application/json' }
+      });
+      if (!response.ok) throw new Error(response.status === 429 ? 'The barcode lookup limit has been reached. Try again later.' : 'Barcode lookup is temporarily unavailable.');
+      const result = await response.json();
+      if (request !== barcodeLookupSequence) return;
+      const product = (result.items || []).find(item => item.title || item.name);
+      if (!product) {
+        barcodeLookupMsg.textContent = 'No product title found for this barcode. Enter the film title manually.';
+        return;
+      }
+      const productTitle = barcodeProductTitle(product);
+      const yearMatch = `${product.title || ''} ${product.description || ''}`.match(/\b((?:18|19|20|21)\d{2})\b/);
+      if (!productTitle) {
+        barcodeLookupMsg.textContent = 'The barcode matched a product, but it did not include a usable title.';
+        return;
+      }
+
+      barcodeLookupMsg.textContent = 'Found a product. Matching it to TMDB…';
+      const movieData = await fetchMovieData(productTitle, yearMatch?.[1] || '');
+      if (request !== barcodeLookupSequence) return;
+      if (movieData.title) {
+        const year = movieData.metadata.productionYear || yearMatch?.[1] || '';
+        addTitle.value = movieData.title;
+        document.getElementById('addReleaseYear').value = year;
+        addTitle.dispatchEvent(new Event('input', { bubbles: true }));
+        scannedMovieData = { barcode, title: movieData.title, year: String(year), metadata: movieData.metadata, cover: movieData.cover };
+        barcodeLookupMsg.textContent = `Found “${movieData.title}”${year ? ` (${year})` : ''} and loaded its TMDB details.`;
+      } else {
+        addTitle.value = productTitle;
+        if (yearMatch) document.getElementById('addReleaseYear').value = yearMatch[1];
+        addTitle.dispatchEvent(new Event('input', { bubbles: true }));
+        barcodeLookupMsg.textContent = `Found “${productTitle}”, but TMDB could not match it. Check the title before adding.`;
+      }
+    } catch (error) {
+      if (request !== barcodeLookupSequence) return;
+      barcodeLookupMsg.style.color = 'var(--rust)';
+      barcodeLookupMsg.textContent = error.message || 'Could not look up this barcode. Enter the film title manually.';
+    }
+  });
+
   function createLibraryMovie({ title, tmdbTitle, format, barcode = '', cover, metadata = {}, year = '' }) {
     return {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
@@ -292,6 +350,7 @@
   });
 
   addTitle.addEventListener('input', () => {
+    if (scannedMovieData && normalizeTmdbTitle(addTitle.value) !== normalizeTmdbTitle(scannedMovieData.title)) scannedMovieData = null;
     const q = normalizeSearch(addTitle.value);
     if (q.length < 3) { dupWarn.style.display = 'none'; return; }
     const match = data.items.find(i => { const t = normalizeSearch(i.title); return t && (t.includes(q) || q.includes(t)); });
@@ -303,14 +362,17 @@
     const title = addTitle.value.trim();
     const yearInput = document.getElementById('addReleaseYear').value.trim();
     const format = document.getElementById('addFormat').value;
-    const barcode = document.getElementById('addBarcode').value.trim();
+    const barcode = addBarcode.value.trim();
     const msg = document.getElementById('saveMsg');
     if (!configComplete(cfg)) { msg.style.color = 'var(--rust)'; msg.textContent = 'Sign in to save.'; return; }
     if (!title) { msg.style.color = 'var(--rust)'; msg.textContent = 'Enter a title first.'; return; }
     if (yearInput && (!/^\d{4}$/.test(yearInput) || Number(yearInput) < 1888 || Number(yearInput) > 2100)) { msg.style.color = 'var(--rust)'; msg.textContent = 'Enter a valid four-digit release year.'; return; }
     msg.style.color = 'var(--ink-dim)'; msg.textContent = 'Looking up movie details and cover…';
     const parsedTitle = parseMovieTitle(title, yearInput);
-    const { metadata, cover, title: tmdbTitle } = await fetchMovieData(title, parsedTitle.year);
+    const cachedScan = scannedMovieData && scannedMovieData.barcode === barcode
+      && normalizeTmdbTitle(scannedMovieData.title) === normalizeTmdbTitle(parsedTitle.title)
+      && (!parsedTitle.year || scannedMovieData.year === parsedTitle.year) ? scannedMovieData : null;
+    const { metadata, cover, title: tmdbTitle } = cachedScan || await fetchMovieData(title, parsedTitle.year);
     data.items.push(createLibraryMovie({ title, tmdbTitle, format, barcode, cover, metadata, year: parsedTitle.year }));
     msg.textContent = 'Saving to Supabase…';
     const ok = await pushFile('items');
