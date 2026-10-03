@@ -145,9 +145,22 @@
           ${i.cover ? `<img class="wishlist-poster" src="${escapeHtml(i.cover)}" alt="${escapeHtml(i.title)} poster" loading="lazy">` : `<div class="wishlist-poster wishlist-poster-placeholder" data-placeholder-index="${index}">🎬</div>`}
         </div>
         <div class="wishlist-title">${escapeHtml(i.title)}</div>
+        <button type="button" data-id="${escapeHtml(String(i.id || ''))}" class="wish-add-btn">Add</button>
         <button data-id="${escapeHtml(String(i.id || ''))}" class="delw">Remove</button>
       </div>`).join('');
     renderCheckWishlist();
+    wishList.querySelectorAll('.wish-add-btn').forEach(button => button.addEventListener('click', () => {
+      const item = data.wishlist.find(entry => String(entry.id || '') === button.dataset.id);
+      if (!item) return;
+      document.getElementById('wishSheetTitle').textContent = item.title;
+      document.getElementById('wishSheetMsg').textContent = '';
+      document.getElementById('wishFormat').value = 'DVD';
+      document.getElementById('wishSheetAdd').disabled = false;
+      document.getElementById('wishSheetCancel').disabled = false;
+      document.getElementById('wishSheetAdd').textContent = 'Add to library';
+      document.getElementById('wishAddSheet').dataset.wishlistId = String(item.id || '');
+      document.getElementById('wishAddSheet').showModal();
+    }));
     wishList.querySelectorAll('.delw').forEach(b => b.addEventListener('click', async () => {
       const prev = data.wishlist;
       data.wishlist = data.wishlist.filter(i => i.id !== b.dataset.id);
@@ -177,6 +190,11 @@
       wishlistCoverFetches.set(key, request);
     });
   }
+
+  document.getElementById('wishSheetCancel').addEventListener('click', () => document.getElementById('wishAddSheet').close());
+  document.getElementById('wishAddSheet').addEventListener('click', event => {
+    if (event.target === event.currentTarget) event.currentTarget.close();
+  });
   // ---- "Add to wishlist" links (Safe to buy message + empty Library) ----
   document.addEventListener('click', async e => {
     const link = e.target.closest('.wish-link');
@@ -214,6 +232,65 @@
   // ---- Add tab ----
   const addTitle = document.getElementById('addTitle');
   const dupWarn = document.getElementById('dupWarn');
+  function createLibraryMovie({ title, tmdbTitle, format, barcode = '', cover, metadata = {}, year = '' }) {
+    return {
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      title: tmdbTitle || title, format, barcode, cover, added: new Date().toISOString(),
+      premiereDate: null, officialRating: null, communityRating: null, criticRating: null,
+      runtimeMinutes: null, container: null, fileSize: null, videoLabel: null, videoWidth: null,
+      videoHeight: null, videoCodec: null, audioLabel: null, audioCodec: null, hasSubtitles: false,
+      played: false, playCount: 0, lastPlayed: null, mediaType: 'Movie', status: null,
+      unplayedCount: null, providerIds: {}, collectionId: null, jellyfinId: null,
+      jellyfinCollectionIds: [], jellyfinCollectionNames: [], ...metadata,
+      productionYear: metadata.productionYear || (year ? Number(year) : null)
+    };
+  }
+
+  document.getElementById('wishSheetAdd').addEventListener('click', async () => {
+    const sheet = document.getElementById('wishAddSheet');
+    const addButton = document.getElementById('wishSheetAdd');
+    const cancelButton = document.getElementById('wishSheetCancel');
+    const message = document.getElementById('wishSheetMsg');
+    const wishlistItem = data.wishlist.find(entry => String(entry.id || '') === sheet.dataset.wishlistId);
+    if (!wishlistItem) { sheet.close(); return; }
+    if (!configComplete(cfg)) { message.textContent = 'Sign in to add items to your library.'; return; }
+    const parsedTitle = parseMovieTitle(wishlistItem.title);
+    const existing = data.items.find(item => normalizeSearch(item.title) === normalizeSearch(parsedTitle.title) &&
+      (!item.productionYear || !parsedTitle.year || Number(item.productionYear) === Number(parsedTitle.year)));
+    if (existing) { message.textContent = `“${existing.title}” is already in your library.`; return; }
+
+    const format = document.getElementById('wishFormat').value;
+    addButton.disabled = true;
+    cancelButton.disabled = true;
+    document.getElementById('wishFormat').disabled = true;
+    message.textContent = 'Looking up TMDB details and cover…';
+    const { metadata, cover, title: tmdbTitle } = await fetchMovieData(wishlistItem.title, parsedTitle.year);
+    const movie = createLibraryMovie({ title: wishlistItem.title, tmdbTitle, format, cover, metadata, year: parsedTitle.year });
+    data.items.push(movie);
+    message.textContent = 'Saving to your library…';
+    const librarySaved = await pushFile('items');
+    renderLibrary();
+    if (!librarySaved) {
+      const wishMsg = document.getElementById('wishMsg');
+      wishMsg.style.color = 'var(--rust)';
+      wishMsg.textContent = 'Added on this device, but the library could not sync to Supabase. The wishlist item is still here.';
+      sheet.close();
+      document.getElementById('wishFormat').disabled = false;
+      return;
+    }
+
+    data.wishlist = data.wishlist.filter(item => item !== wishlistItem);
+    const wishlistSaved = await pushFile('wishlist');
+    renderWishlist();
+    const wishMsg = document.getElementById('wishMsg');
+    wishMsg.style.color = wishlistSaved ? 'var(--teal)' : 'var(--rust)';
+    wishMsg.textContent = wishlistSaved
+      ? `Added “${movie.title}” to your library${metadata.productionYear || parsedTitle.year ? ` (${metadata.productionYear || parsedTitle.year})` : ''}.${tmdbTitle ? '' : ' TMDB found no match; you can use Update info later.'}`
+      : `Added “${movie.title}” to your library, but the wishlist change could not sync yet.`;
+    sheet.close();
+    document.getElementById('wishFormat').disabled = false;
+  });
+
   addTitle.addEventListener('input', () => {
     const q = normalizeSearch(addTitle.value);
     if (q.length < 3) { dupWarn.style.display = 'none'; return; }
@@ -234,7 +311,7 @@
     msg.style.color = 'var(--ink-dim)'; msg.textContent = 'Looking up movie details and cover…';
     const parsedTitle = parseMovieTitle(title, yearInput);
     const { metadata, cover, title: tmdbTitle } = await fetchMovieData(title, parsedTitle.year);
-    data.items.push({ id: Date.now().toString(36), title: tmdbTitle || title, format, barcode, cover, added: new Date().toISOString(), premiereDate: null, officialRating: null, communityRating: null, criticRating: null, runtimeMinutes: null, container: null, fileSize: null, videoLabel: null, videoWidth: null, videoHeight: null, videoCodec: null, audioLabel: null, audioCodec: null, hasSubtitles: false, played: false, playCount: 0, lastPlayed: null, mediaType: 'Movie', status: null, unplayedCount: null, providerIds: {}, collectionId: null, jellyfinId: null, jellyfinCollectionIds: [], jellyfinCollectionNames: [], ...metadata, productionYear: metadata.productionYear || (parsedTitle.year ? Number(parsedTitle.year) : null) });
+    data.items.push(createLibraryMovie({ title, tmdbTitle, format, barcode, cover, metadata, year: parsedTitle.year }));
     msg.textContent = 'Saving to Supabase…';
     const ok = await pushFile('items');
     msg.style.color = ok ? 'var(--teal)' : 'var(--rust)';

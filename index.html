@@ -96,6 +96,23 @@
     <div id="wishList" style="margin-top:18px;"></div>
   </section>
 
+  <dialog id="wishAddSheet" class="wish-add-sheet" aria-labelledby="wishAddSheetHeading">
+    <div class="wish-sheet-grabber" aria-hidden="true"></div>
+    <h2 id="wishAddSheetHeading">Add to your library</h2>
+    <p id="wishSheetTitle" class="wish-sheet-title"></p>
+    <div class="field">
+      <label for="wishFormat">Format</label>
+      <select id="wishFormat">
+        <option>DVD</option><option>Blu-ray</option><option>4K UHD</option><option>Box set</option><option>Unknown</option>
+      </select>
+    </div>
+    <p id="wishSheetMsg" class="wish-sheet-msg" aria-live="polite"></p>
+    <div class="wish-sheet-actions">
+      <button type="button" id="wishSheetCancel" class="btn-secondary">Cancel</button>
+      <button type="button" id="wishSheetAdd" class="btn-primary">Add to library</button>
+    </div>
+  </dialog>
+
   <section id="tab-add" class="tab">
     <div class="field">
       <label for="addTitle">Title</label>
