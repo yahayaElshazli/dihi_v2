@@ -99,14 +99,17 @@ async function fetchMovieDetails(match) {
     const certification = release?.release_dates?.find(date => date.certification)?.certification || null;
     const releaseDate = movie.release_date || result.release_date || null;
     return {
-      productionYear: releaseDate ? Number(releaseDate.slice(0, 4)) || null : null,
-      premiereDate: releaseDate,
-      communityRating: movie.vote_average || result.vote_average || null,
-      runtimeMinutes: movie.runtime || null,
-      officialRating: certification,
-      providerIds: { tmdb: String(movie.id || result.id), ...(movie.external_ids?.imdb_id ? { imdb: movie.external_ids.imdb_id } : {}) }
+      title: movie.title || result.title || null,
+      metadata: {
+        productionYear: releaseDate ? Number(releaseDate.slice(0, 4)) || null : null,
+        premiereDate: releaseDate,
+        communityRating: movie.vote_average || result.vote_average || null,
+        runtimeMinutes: movie.runtime || null,
+        officialRating: certification,
+        providerIds: { tmdb: String(movie.id || result.id), ...(movie.external_ids?.imdb_id ? { imdb: movie.external_ids.imdb_id } : {}) }
+      }
     };
-  } catch (_) { lastCoverError = 'Could not reach TMDB for movie details.'; return {}; }
+  } catch (_) { lastCoverError = 'Could not reach TMDB for movie details.'; return { title: result.title || null, metadata: {} }; }
 }
 
 function coverFromTmdbMatch(match) {
@@ -116,9 +119,9 @@ function coverFromTmdbMatch(match) {
 
 async function fetchMovieData(title, year = '') {
   const match = await searchTmdb(title, 'Movie', year, 'Movie');
-  if (!match) return { metadata: {}, cover: null };
-  const metadata = await fetchMovieDetails(match);
-  return { metadata, cover: coverFromTmdbMatch(match) };
+  if (!match) return { metadata: {}, cover: null, title: null };
+  const details = await fetchMovieDetails(match);
+  return { metadata: details.metadata || {}, cover: coverFromTmdbMatch(match), title: details.title || match.result.title || null };
 }
 
 async function fetchCover(title, format = 'Movie', year = '', mediaType = '') {

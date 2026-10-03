@@ -162,9 +162,13 @@
         const updateButton = row.querySelector('[data-library-action="update"]');
         updateButton.disabled = true;
         message.textContent = 'Looking up missing info on TMDB…';
-        const { metadata, cover } = await fetchMovieData(item.title, item.productionYear || item.premiereDate);
+        const { metadata, cover, title: tmdbTitle } = await fetchMovieData(item.title, item.productionYear || item.premiereDate);
         const changed = [];
         const isMissing = value => value === null || value === undefined || value === '';
+        if (!item.jellyfinId && tmdbTitle && tmdbTitle !== item.title) {
+          changed.push(['title', item.title]);
+          item.title = tmdbTitle;
+        }
         Object.entries(metadata).forEach(([key, value]) => {
           if (key === 'providerIds') {
             const ids = { ...(item.providerIds || {}) };

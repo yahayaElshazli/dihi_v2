@@ -233,8 +233,8 @@
     if (yearInput && (!/^\d{4}$/.test(yearInput) || Number(yearInput) < 1888 || Number(yearInput) > 2100)) { msg.style.color = 'var(--rust)'; msg.textContent = 'Enter a valid four-digit release year.'; return; }
     msg.style.color = 'var(--ink-dim)'; msg.textContent = 'Looking up movie details and cover…';
     const parsedTitle = parseMovieTitle(title, yearInput);
-    const { metadata, cover } = await fetchMovieData(title, parsedTitle.year);
-    data.items.push({ id: Date.now().toString(36), title, format, barcode, cover, added: new Date().toISOString(), premiereDate: null, officialRating: null, communityRating: null, criticRating: null, runtimeMinutes: null, container: null, fileSize: null, videoLabel: null, videoWidth: null, videoHeight: null, videoCodec: null, audioLabel: null, audioCodec: null, hasSubtitles: false, played: false, playCount: 0, lastPlayed: null, mediaType: 'Movie', status: null, unplayedCount: null, providerIds: {}, collectionId: null, jellyfinId: null, jellyfinCollectionIds: [], jellyfinCollectionNames: [], ...metadata, productionYear: metadata.productionYear || (parsedTitle.year ? Number(parsedTitle.year) : null) });
+    const { metadata, cover, title: tmdbTitle } = await fetchMovieData(title, parsedTitle.year);
+    data.items.push({ id: Date.now().toString(36), title: tmdbTitle || title, format, barcode, cover, added: new Date().toISOString(), premiereDate: null, officialRating: null, communityRating: null, criticRating: null, runtimeMinutes: null, container: null, fileSize: null, videoLabel: null, videoWidth: null, videoHeight: null, videoCodec: null, audioLabel: null, audioCodec: null, hasSubtitles: false, played: false, playCount: 0, lastPlayed: null, mediaType: 'Movie', status: null, unplayedCount: null, providerIds: {}, collectionId: null, jellyfinId: null, jellyfinCollectionIds: [], jellyfinCollectionNames: [], ...metadata, productionYear: metadata.productionYear || (parsedTitle.year ? Number(parsedTitle.year) : null) });
     msg.textContent = 'Saving to Supabase…';
     const ok = await pushFile('items');
     msg.style.color = ok ? 'var(--teal)' : 'var(--rust)';
