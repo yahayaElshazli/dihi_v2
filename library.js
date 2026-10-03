@@ -2,6 +2,9 @@
   const libList = document.getElementById('libList');
   const libFilter = document.getElementById('libFilter');
   const libCount = document.getElementById('libCount');
+  let editingLibraryItemId = null;
+  let selectedEditTmdbMatch = null;
+  let editTmdbCandidates = [];
 
   libFilter.addEventListener('input', renderLibrary);
 
@@ -117,6 +120,7 @@
           <div class="libitem-details">
             <div class="detail-grid">${detailRows(i)}</div>
             ${(i.mediaType || 'Movie') === 'Movie' ? `<div class="libitem-actions">
+              <button type="button" class="btn-secondary" data-library-action="edit">Edit</button>
               <button type="button" class="btn-secondary" data-library-action="update">Update info</button>
               <button type="button" class="btn-secondary remove-item-btn" data-library-action="remove">Remove</button>
               <p class="library-action-msg" aria-live="polite"></p>
@@ -141,6 +145,11 @@
         const row = button.closest('.libitem');
         const title = row.querySelector('.title').textContent;
         const action = button.dataset.libraryAction;
+        if (action === 'edit') {
+          const item = data.items.find(entry => String(entry.id) === row.dataset.libraryItem);
+          if (item) openLibraryItemEditor(item);
+          return;
+        }
         if (action === 'remove') {
           if (!confirm(`Remove “${title}” from your library? This cannot be undone.`)) return;
           const item = data.items.find(entry => String(entry.id) === row.dataset.libraryItem);
@@ -211,6 +220,119 @@
       });
     });
   }
+
+  function openLibraryItemEditor(item) {
+    editingLibraryItemId = String(item.id);
+    selectedEditTmdbMatch = null;
+    editTmdbCandidates = [];
+    document.getElementById('editItemTitle').value = item.title || '';
+    document.getElementById('editItemYear').value = item.productionYear || String(item.title || '').match(/\(((?:18|19|20|21)\d{2})\)\s*$/)?.[1] || '';
+    document.getElementById('editItemFormat').value = item.format || 'Unknown';
+    document.getElementById('editItemBarcode').value = item.barcode || '';
+    document.getElementById('editItemMsg').textContent = '';
+    document.getElementById('editTmdbMatches').replaceChildren();
+    document.getElementById('editItemSave').disabled = false;
+    document.getElementById('findEditMatchesBtn').disabled = false;
+    document.getElementById('editItemSheet').showModal();
+  }
+
+  function clearEditMatchSelection() {
+    selectedEditTmdbMatch = null;
+    document.querySelectorAll('#editTmdbMatches .edit-tmdb-choice').forEach(button => button.classList.remove('selected'));
+  }
+  document.getElementById('editItemTitle').addEventListener('input', clearEditMatchSelection);
+  document.getElementById('editItemYear').addEventListener('input', clearEditMatchSelection);
+  document.getElementById('editItemCancel').addEventListener('click', () => document.getElementById('editItemSheet').close());
+  document.getElementById('editItemSheet').addEventListener('click', event => {
+    if (event.target === event.currentTarget) event.currentTarget.close();
+  });
+
+  document.getElementById('findEditMatchesBtn').addEventListener('click', async () => {
+    const title = document.getElementById('editItemTitle').value.trim();
+    const year = document.getElementById('editItemYear').value.trim();
+    const button = document.getElementById('findEditMatchesBtn');
+    const results = document.getElementById('editTmdbMatches');
+    const message = document.getElementById('editItemMsg');
+    if (!title) { message.textContent = 'Enter a title to search TMDB.'; return; }
+    if (year && (!/^\d{4}$/.test(year) || Number(year) < 1888 || Number(year) > 2100)) { message.textContent = 'Enter a valid four-digit release year.'; return; }
+    clearEditMatchSelection();
+    button.disabled = true;
+    message.textContent = 'Searching TMDB…';
+    results.replaceChildren();
+    editTmdbCandidates = await findTmdbMovieCandidates(title, year);
+    button.disabled = false;
+    if (!editTmdbCandidates.length) { message.textContent = lastCoverError || 'No TMDB matches found.'; return; }
+    message.textContent = 'Choose the correct movie. Selecting it will refresh its TMDB fields.';
+    results.innerHTML = editTmdbCandidates.map((candidate, index) => {
+      const result = candidate.result;
+      const releaseYear = String(result.release_date || '').slice(0, 4);
+      const poster = result.poster_path
+        ? `<img src="https://image.tmdb.org/t/p/w92${escapeHtml(result.poster_path)}" alt="">`
+        : '<span class="edit-tmdb-poster-placeholder" aria-hidden="true"></span>';
+      return `<button type="button" class="edit-tmdb-choice" data-match-index="${index}">${poster}<span class="edit-tmdb-copy"><strong>${escapeHtml(result.title || '')}</strong><span class="edit-tmdb-year">${escapeHtml(releaseYear || 'Year unknown')}</span></span></button>`;
+    }).join('');
+    results.querySelectorAll('.edit-tmdb-choice').forEach(choice => choice.addEventListener('click', async () => {
+      results.querySelectorAll('.edit-tmdb-choice').forEach(other => other.classList.remove('selected'));
+      choice.classList.add('selected');
+      message.textContent = 'Loading selected TMDB details…';
+      document.getElementById('editItemSave').disabled = true;
+      const selected = editTmdbCandidates[Number(choice.dataset.matchIndex)];
+      selectedEditTmdbMatch = await fetchMovieDataForMatch(selected);
+      document.getElementById('editItemSave').disabled = false;
+      const canonicalTitle = selectedEditTmdbMatch.title || selected.result.title || '';
+      document.getElementById('editItemTitle').value = canonicalTitle;
+      document.getElementById('editItemYear').value = selectedEditTmdbMatch.metadata.productionYear || String(selected.result.release_date || '').slice(0, 4);
+      message.textContent = `Selected “${canonicalTitle}”. Saving will replace the TMDB details with this match.`;
+    }));
+  });
+
+  document.getElementById('editItemSave').addEventListener('click', async () => {
+    const item = data.items.find(entry => String(entry.id) === editingLibraryItemId);
+    const title = document.getElementById('editItemTitle').value.trim();
+    const year = document.getElementById('editItemYear').value.trim();
+    const format = document.getElementById('editItemFormat').value;
+    const barcode = document.getElementById('editItemBarcode').value.trim();
+    const message = document.getElementById('editItemMsg');
+    const saveButton = document.getElementById('editItemSave');
+    if (!item) { message.textContent = 'This library item is no longer available.'; return; }
+    if (!title) { message.textContent = 'Enter a title.'; return; }
+    if (year && (!/^\d{4}$/.test(year) || Number(year) < 1888 || Number(year) > 2100)) { message.textContent = 'Enter a valid four-digit release year.'; return; }
+    const previous = { ...item, providerIds: { ...(item.providerIds || {}) } };
+    const identityChanged = title !== previous.title || Number(year || 0) !== Number(previous.productionYear || 0);
+    item.title = title;
+    item.productionYear = year ? Number(year) : null;
+    item.format = format;
+    item.barcode = barcode;
+    if (selectedEditTmdbMatch) {
+      Object.assign(item, selectedEditTmdbMatch.metadata);
+      item.title = title;
+      item.productionYear = selectedEditTmdbMatch.metadata.productionYear || (year ? Number(year) : null);
+      const otherProviderIds = { ...previous.providerIds };
+      ['tmdb', 'Tmdb', 'TMDb', 'imdb', 'Imdb', 'tmdbAliases'].forEach(key => delete otherProviderIds[key]);
+      item.providerIds = { ...otherProviderIds, ...(selectedEditTmdbMatch.metadata.providerIds || {}) };
+      item.cover = selectedEditTmdbMatch.cover || null;
+    } else if (identityChanged) {
+      item.premiereDate = null;
+      item.officialRating = null;
+      item.communityRating = null;
+      item.criticRating = null;
+      item.runtimeMinutes = null;
+      item.cover = null;
+      item.providerIds = { ...previous.providerIds };
+      ['tmdb', 'Tmdb', 'TMDb', 'imdb', 'Imdb', 'tmdbAliases'].forEach(key => delete item.providerIds[key]);
+    }
+    saveButton.disabled = true;
+    message.textContent = 'Saving changes…';
+    if (await pushFile('items')) {
+      renderLibrary();
+      checkInput.dispatchEvent(new Event('input'));
+      document.getElementById('editItemSheet').close();
+    } else {
+      Object.assign(item, previous);
+      saveButton.disabled = false;
+      message.textContent = `Could not save changes. ${lastSupabaseError || ''}`.trim();
+    }
+  });
 
   document.getElementById('fetchCoversBtn').addEventListener('click', async () => {
     const msg = document.getElementById('backupMsg');

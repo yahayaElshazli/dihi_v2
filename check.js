@@ -2,12 +2,17 @@
   const checkInput = document.getElementById('checkInput');
   const checkResults = document.getElementById('checkResults');
   checkInput.addEventListener('input', () => {
-    const q = normalizeSearch(checkInput.value);
+    const raw = checkInput.value.trim();
+    const q = normalizeSearch(raw);
     if (!q) checkResults.innerHTML = '';
     else {
-      const matches = data.items.filter(i => titleMatches(i.title, q));
+      const queryWords = (raw.normalize('NFKD').replace(/[\u0300-\u036f]/g, '').replace(/&/g, ' ').toLowerCase().match(/[\p{L}\p{N}]+/gu) || []).filter(word => word !== 'and');
+      const matches = data.items.filter(item => {
+        const searchable = [item.title, ...(item.providerIds?.tmdbAliases || [])].map(normalizeSearch).join(' ');
+        return searchable.includes(q) || (queryWords.length > 1 && queryWords.every(word => searchable.includes(normalizeSearch(word))));
+      });
       if (matches.length) checkResults.innerHTML = matches.map(checkLibraryResult).join('');
-      else { const raw = checkInput.value.trim(); checkResults.innerHTML = `<div class="result safe-buy"><strong>Safe to buy</strong>No match for "${escapeHtml(raw)}" in your library. ${wishlistLinkHtml(raw)}</div>`; }
+      else { checkResults.innerHTML = `<div class="result safe-buy"><strong>Safe to buy</strong>No match for "${escapeHtml(raw)}" in your library. ${wishlistLinkHtml(raw)}</div>`; }
     }
     renderCheckWishlist();
   });

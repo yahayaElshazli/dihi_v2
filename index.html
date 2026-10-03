@@ -113,6 +113,35 @@
     </div>
   </dialog>
 
+  <dialog id="editItemSheet" class="wish-add-sheet edit-item-sheet" aria-labelledby="editItemSheetHeading">
+    <div class="wish-sheet-grabber" aria-hidden="true"></div>
+    <h2 id="editItemSheetHeading">Edit library item</h2>
+    <div class="field">
+      <label for="editItemTitle">Title</label>
+      <input type="text" id="editItemTitle" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="editItemYear">Release year</label>
+      <input type="text" id="editItemYear" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="e.g. 1996" autocomplete="off">
+    </div>
+    <div class="field">
+      <label for="editItemFormat">Format</label>
+      <select id="editItemFormat"><option>DVD</option><option>Blu-ray</option><option>4K UHD</option><option>Box set</option><option>Unknown</option></select>
+    </div>
+    <div class="field">
+      <label for="editItemBarcode">Barcode</label>
+      <input type="text" id="editItemBarcode" autocomplete="off">
+    </div>
+    <button type="button" id="findEditMatchesBtn" class="btn-secondary">Find TMDB matches</button>
+    <div id="editTmdbMatches" class="edit-tmdb-matches" aria-live="polite"></div>
+    <p class="edit-item-note">If you change the title or year without selecting a TMDB match, details tied to the old match will be cleared so they can be refreshed.</p>
+    <p id="editItemMsg" class="wish-sheet-msg" aria-live="polite"></p>
+    <div class="wish-sheet-actions">
+      <button type="button" id="editItemCancel" class="btn-secondary">Cancel</button>
+      <button type="button" id="editItemSave" class="btn-primary">Save changes</button>
+    </div>
+  </dialog>
+
   <section id="tab-add" class="tab">
     <div class="field">
       <label for="addTitle">Title</label>

@@ -98,6 +98,16 @@ async function fetchMovieDetails(match) {
     const release = (movie.release_dates?.results || []).find(country => country.iso_3166_1 === 'GB');
     const certification = release?.release_dates?.find(date => date.certification)?.certification || null;
     const releaseDate = movie.release_date || result.release_date || null;
+    let alternateTitles = [];
+    try {
+      const aliasesResponse = await fetch(`https://api.themoviedb.org/3/movie/${encodeURIComponent(result.id)}/alternative_titles`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
+      });
+      if (aliasesResponse.ok) {
+        const aliases = await aliasesResponse.json();
+        alternateTitles = (aliases.titles || []).map(entry => entry.title).filter(Boolean);
+      }
+    } catch (_) { /* Alternate titles are optional; the main metadata is still useful. */ }
     return {
       title: movie.title || result.title || null,
       metadata: {
@@ -106,7 +116,11 @@ async function fetchMovieDetails(match) {
         communityRating: movie.vote_average || result.vote_average || null,
         runtimeMinutes: movie.runtime || null,
         officialRating: certification,
-        providerIds: { tmdb: String(movie.id || result.id), ...(movie.external_ids?.imdb_id ? { imdb: movie.external_ids.imdb_id } : {}) }
+        providerIds: {
+          tmdb: String(movie.id || result.id),
+          ...(movie.external_ids?.imdb_id ? { imdb: movie.external_ids.imdb_id } : {}),
+          tmdbAliases: [...new Set(alternateTitles)].slice(0, 30)
+        }
       }
     };
   } catch (_) { lastCoverError = 'Could not reach TMDB for movie details.'; return { title: result.title || null, metadata: {} }; }
@@ -120,6 +134,53 @@ function coverFromTmdbMatch(match) {
 async function fetchMovieData(title, year = '') {
   const match = await searchTmdb(title, 'Movie', year, 'Movie');
   if (!match) return { metadata: {}, cover: null, title: null };
+  const details = await fetchMovieDetails(match);
+  return { metadata: details.metadata || {}, cover: coverFromTmdbMatch(match), title: details.title || match.result.title || null };
+}
+
+async function findTmdbMovieCandidates(title, year = '') {
+  const token = cfg.tmdbToken;
+  if (!token) { lastCoverError = 'TMDB token is not saved in this browser.'; return []; }
+  const parsed = parseMovieTitle(title, year);
+  if (!parsed.title) return [];
+  const normalized = normalizeTmdbTitle(parsed.title);
+  const words = normalized.split(/\s+/).filter(Boolean);
+  const queries = [...new Set([normalized, parsed.title, words.length === 2 ? [...words].reverse().join(' ') : ''].filter(Boolean))];
+  const findCandidates = pool => [...pool.values()]
+    .map(result => ({ token, kind: 'movie', result, score: rankTmdbResult(result, parsed.title, parsed.year) }))
+    .filter(candidate => candidate.score >= 20)
+    .sort((a, b) => b.score - a.score || Number(b.result.popularity || 0) - Number(a.result.popularity || 0))
+    .slice(0, 6);
+  const search = async (query, useYear) => {
+    const params = new URLSearchParams({ query, include_adult: 'false' });
+    if (useYear && parsed.year) params.set('year', parsed.year);
+    try {
+      const response = await fetch(`https://api.themoviedb.org/3/search/movie?${params}`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' }
+      });
+      if (!response.ok) return [];
+      const result = await response.json();
+      return result.results || [];
+    } catch (_) { return []; }
+  };
+  for (const useYear of (parsed.year ? [true, false] : [false])) {
+    const pool = new Map();
+    for (const query of queries) {
+      (await search(query, useYear)).forEach(result => pool.set(String(result.id), result));
+      if (findCandidates(pool).length) break;
+    }
+    const candidates = findCandidates(pool);
+    if (candidates.length) {
+      lastCoverError = '';
+      return candidates;
+    }
+  }
+  lastCoverError = `TMDB found no matches for ${parsed.title}.`;
+  return [];
+}
+
+async function fetchMovieDataForMatch(match) {
+  if (!match?.result) return { metadata: {}, cover: null, title: null };
   const details = await fetchMovieDetails(match);
   return { metadata: details.metadata || {}, cover: coverFromTmdbMatch(match), title: details.title || match.result.title || null };
 }
