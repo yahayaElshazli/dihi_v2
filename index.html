@@ -160,11 +160,25 @@
     </div>
     <div class="field">
       <label for="addBarcode">Barcode (optional)</label>
-      <input type="text" id="addBarcode" placeholder="Enter UPC/EAN if known" autocomplete="off">
+      <div class="barcode-entry">
+        <input type="text" id="addBarcode" placeholder="Enter UPC/EAN if known" autocomplete="off" inputmode="numeric">
+        <button type="button" class="btn-secondary" id="scanBarcodeBtn">Scan</button>
+      </div>
     </div>
     <button class="btn-primary" id="saveBtn">Add to library</button>
     <p id="saveMsg" style="color:var(--teal); font-size:13px; margin-top:10px;"></p>
   </section>
+
+  <dialog id="barcodeScanSheet" class="wish-add-sheet barcode-scan-sheet" aria-labelledby="barcodeScanHeading">
+    <div class="wish-sheet-grabber" aria-hidden="true"></div>
+    <h2 id="barcodeScanHeading">Scan barcode</h2>
+    <p class="barcode-scan-help">Point your camera at the UPC or EAN barcode on the case.</p>
+    <div id="barcodeScannerView" class="barcode-scanner-view"></div>
+    <p id="barcodeScanMsg" class="wish-sheet-msg" aria-live="polite">Starting camera…</p>
+    <div class="wish-sheet-actions">
+      <button type="button" id="barcodeScanCancel" class="btn-secondary">Cancel</button>
+    </div>
+  </dialog>
 
   <section id="tab-admin" class="tab">
     <div class="admin-section">
@@ -230,5 +244,7 @@
 <script defer src="./library.js"></script>
 <script defer src="./navigation.js"></script>
 <script defer src="./app.js"></script>
+<script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script defer src="./barcode-scanner.js"></script>
 </body>
 </html>
