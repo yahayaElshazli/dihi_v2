@@ -224,22 +224,22 @@
 
   document.getElementById('saveBtn').addEventListener('click', async () => {
     const title = addTitle.value.trim();
+    const yearInput = document.getElementById('addReleaseYear').value.trim();
     const format = document.getElementById('addFormat').value;
     const barcode = document.getElementById('addBarcode').value.trim();
     const msg = document.getElementById('saveMsg');
     if (!configComplete(cfg)) { msg.style.color = 'var(--rust)'; msg.textContent = 'Sign in to save.'; return; }
     if (!title) { msg.style.color = 'var(--rust)'; msg.textContent = 'Enter a title first.'; return; }
+    if (yearInput && (!/^\d{4}$/.test(yearInput) || Number(yearInput) < 1888 || Number(yearInput) > 2100)) { msg.style.color = 'var(--rust)'; msg.textContent = 'Enter a valid four-digit release year.'; return; }
     msg.style.color = 'var(--ink-dim)'; msg.textContent = 'Looking up movie details and cover…';
-    const [metadata, cover] = await Promise.all([
-      fetchMovieMetadata(title),
-      fetchCover(title, format)
-    ]);
-    data.items.push({ id: Date.now().toString(36), title, format, barcode, cover, added: new Date().toISOString(), productionYear: null, premiereDate: null, officialRating: null, communityRating: null, criticRating: null, runtimeMinutes: null, container: null, fileSize: null, videoLabel: null, videoWidth: null, videoHeight: null, videoCodec: null, audioLabel: null, audioCodec: null, hasSubtitles: false, played: false, playCount: 0, lastPlayed: null, mediaType: 'Movie', status: null, unplayedCount: null, providerIds: {}, collectionId: null, jellyfinId: null, jellyfinCollectionIds: [], jellyfinCollectionNames: [], ...metadata });
+    const parsedTitle = parseMovieTitle(title, yearInput);
+    const { metadata, cover } = await fetchMovieData(title, parsedTitle.year);
+    data.items.push({ id: Date.now().toString(36), title, format, barcode, cover, added: new Date().toISOString(), premiereDate: null, officialRating: null, communityRating: null, criticRating: null, runtimeMinutes: null, container: null, fileSize: null, videoLabel: null, videoWidth: null, videoHeight: null, videoCodec: null, audioLabel: null, audioCodec: null, hasSubtitles: false, played: false, playCount: 0, lastPlayed: null, mediaType: 'Movie', status: null, unplayedCount: null, providerIds: {}, collectionId: null, jellyfinId: null, jellyfinCollectionIds: [], jellyfinCollectionNames: [], ...metadata, productionYear: metadata.productionYear || (parsedTitle.year ? Number(parsedTitle.year) : null) });
     msg.textContent = 'Saving to Supabase…';
     const ok = await pushFile('items');
     msg.style.color = ok ? 'var(--teal)' : 'var(--rust)';
     msg.textContent = ok ? `Added "${title}" to your library.` : (lastSupabaseError || 'Could not save to Supabase. Try again.');
-    if (ok) { addTitle.value = ''; document.getElementById('addBarcode').value = ''; dupWarn.style.display = 'none'; }
+    if (ok) { addTitle.value = ''; document.getElementById('addReleaseYear').value = ''; document.getElementById('addBarcode').value = ''; dupWarn.style.display = 'none'; }
     renderLibrary();
   });
 

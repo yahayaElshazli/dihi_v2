@@ -162,10 +162,7 @@
         const updateButton = row.querySelector('[data-library-action="update"]');
         updateButton.disabled = true;
         message.textContent = 'Looking up missing info on TMDB…';
-        const [metadata, cover] = await Promise.all([
-          fetchMovieMetadata(item.title, item.productionYear || item.premiereDate),
-          item.cover ? Promise.resolve(null) : fetchCover(item.title, item.format, item.productionYear || item.premiereDate, item.mediaType)
-        ]);
+        const { metadata, cover } = await fetchMovieData(item.title, item.productionYear || item.premiereDate);
         const changed = [];
         const isMissing = value => value === null || value === undefined || value === '';
         Object.entries(metadata).forEach(([key, value]) => {
