@@ -20,6 +20,7 @@ function rankTmdbResult(result, title, year, isSeries = false) {
   const candidateTitles = [result.title || result.name, result.original_title || result.original_name].filter(Boolean).map(normalizeTmdbTitle);
   let score = 0;
   if (candidateTitles.includes(wanted)) score += 100;
+  else if (spellingSearchVariants(title).slice(1).map(normalizeTmdbTitle).some(variant => candidateTitles.includes(variant))) score += 90;
   else if (candidateTitles.some(value => value.startsWith(wanted) || wanted.startsWith(value))) score += 45;
   else if (candidateTitles.some(value => value.includes(wanted) || wanted.includes(value))) score += 25;
   else {
@@ -48,8 +49,9 @@ async function searchTmdb(title, format = 'Movie', year = '', mediaType = '') {
   const searchYear = parsed.year;
   const normalizedTitle = normalizeTmdbTitle(searchTitle);
   const words = normalizedTitle.split(/\s+/).filter(Boolean);
+  const spellingQueries = spellingSearchVariants(searchTitle);
   const queries = [...new Set([
-    normalizedTitle,
+    ...spellingQueries,
     searchTitle,
     words.length === 2 ? words.reverse().join(' ') : ''
   ].filter(Boolean))];
@@ -67,18 +69,23 @@ async function searchTmdb(title, format = 'Movie', year = '', mediaType = '') {
     } catch (_) { requestFailed = true; return []; }
   };
 
-  // Normalize punctuation first (e.g. “Avengers: Endgame” -> “avengers endgame”),
-  // then fall back to the user's wording and reversed two-word order, and
-  // finally relax the year filter.
+  // Normalize punctuation and merge UK/US spelling variants before ranking.
   for (const includeYear of (searchYear ? [true, false] : [false])) {
-    for (const query of queries) {
+    const variantPool = new Map();
+    for (const query of spellingQueries) {
+      (await runSearch(query, includeYear)).forEach(result => variantPool.set(String(result.id), result));
+    }
+    const rankedVariants = [...variantPool.values()].sort((a, b) => rankTmdbResult(b, searchTitle, searchYear, isSeries) - rankTmdbResult(a, searchTitle, searchYear, isSeries));
+    if (rankedVariants.length && rankTmdbResult(rankedVariants[0], searchTitle, searchYear, isSeries) >= 20) {
+      lastCoverError = '';
+      return { token, kind, result: rankedVariants[0] };
+    }
+    for (const query of queries.slice(spellingQueries.length)) {
       const results = await runSearch(query, includeYear);
-      if (results.length) {
-        results.sort((a, b) => rankTmdbResult(b, searchTitle, searchYear, isSeries) - rankTmdbResult(a, searchTitle, searchYear, isSeries));
-        if (rankTmdbResult(results[0], searchTitle, searchYear, isSeries) >= 20) {
-          lastCoverError = '';
-          return { token, kind, result: results[0] };
-        }
+      results.sort((a, b) => rankTmdbResult(b, searchTitle, searchYear, isSeries) - rankTmdbResult(a, searchTitle, searchYear, isSeries));
+      if (results.length && rankTmdbResult(results[0], searchTitle, searchYear, isSeries) >= 20) {
+        lastCoverError = '';
+        return { token, kind, result: results[0] };
       }
     }
   }
@@ -145,7 +152,8 @@ async function findTmdbMovieCandidates(title, year = '') {
   if (!parsed.title) return [];
   const normalized = normalizeTmdbTitle(parsed.title);
   const words = normalized.split(/\s+/).filter(Boolean);
-  const queries = [...new Set([normalized, parsed.title, words.length === 2 ? [...words].reverse().join(' ') : ''].filter(Boolean))];
+  const spellingQueries = spellingSearchVariants(parsed.title);
+  const queries = [...new Set([...spellingQueries, normalized, parsed.title, words.length === 2 ? [...words].reverse().join(' ') : ''].filter(Boolean))];
   const findCandidates = pool => [...pool.values()]
     .map(result => ({ token, kind: 'movie', result, score: rankTmdbResult(result, parsed.title, parsed.year) }))
     .filter(candidate => candidate.score >= 20)
@@ -165,7 +173,10 @@ async function findTmdbMovieCandidates(title, year = '') {
   };
   for (const useYear of (parsed.year ? [true, false] : [false])) {
     const pool = new Map();
-    for (const query of queries) {
+    for (const query of spellingQueries) {
+      (await search(query, useYear)).forEach(result => pool.set(String(result.id), result));
+    }
+    if (!findCandidates(pool).length) for (const query of queries.slice(spellingQueries.length)) {
       (await search(query, useYear)).forEach(result => pool.set(String(result.id), result));
       if (findCandidates(pool).length) break;
     }

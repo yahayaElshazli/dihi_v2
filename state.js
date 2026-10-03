@@ -42,8 +42,39 @@ const CONFIG_KEY = 'reelcheck-config';
       .replace(/&/g, 'and')
       .replace(/[^\p{L}\p{N}]+/gu, '');
   }
-  function titleMatches(title, normalizedQuery) {
-    return !normalizedQuery || normalizeSearch(title).includes(normalizedQuery);
+  const SPELLING_PAIRS = [
+    ['analyze', 'analyse'], ['organize', 'organise'], ['recognize', 'recognise'], ['realize', 'realise'],
+    ['apologize', 'apologise'], ['color', 'colour'], ['favorite', 'favourite'], ['honor', 'honour'],
+    ['labor', 'labour'], ['neighbor', 'neighbour'], ['behavior', 'behaviour'], ['rumor', 'rumour'],
+    ['flavor', 'flavour'], ['center', 'centre'], ['theater', 'theatre'], ['defense', 'defence'],
+    ['offense', 'offence'], ['gray', 'grey'], ['jewelry', 'jewellery'], ['catalog', 'catalogue'],
+    ['dialog', 'dialogue'], ['traveled', 'travelled'], ['traveling', 'travelling'],
+    ['canceled', 'cancelled'], ['canceling', 'cancelling'], ['license', 'licence'], ['practice', 'practise']
+  ];
+  const SPELLING_VARIANTS = new Map(SPELLING_PAIRS.flatMap(([us, uk]) => [[us, uk], [uk, us]]));
+  function spellingSearchVariants(value) {
+    const words = String(value || '').normalize('NFKD').replace(/[\u0300-\u036f]/g, '')
+      .replace(/&/g, ' and ').toLowerCase().match(/[\p{L}\p{N}]+/gu) || [];
+    let variants = [words];
+    words.forEach((word, index) => {
+      const alternative = SPELLING_VARIANTS.get(word);
+      if (alternative && variants.length < 16) {
+        variants = [...variants, ...variants.map(variant => {
+          const changed = [...variant];
+          changed[index] = alternative;
+          return changed;
+        })].slice(0, 16);
+      }
+    });
+    return [...new Set(variants.map(variant => variant.join(' ')))];
+  }
+  function titleMatches(title, normalizedQuery, rawQuery = '') {
+    if (!normalizedQuery) return true;
+    const normalizedTitle = normalizeSearch(title);
+    const spellings = spellingSearchVariants(rawQuery || normalizedQuery).map(normalizeSearch);
+    if (spellings.some(query => query && normalizedTitle.includes(query))) return true;
+    const words = (String(rawQuery || '').toLowerCase().match(/[\p{L}\p{N}]+/gu) || []).filter(word => word !== 'and');
+    return words.length > 1 && words.every(word => spellingSearchVariants(word).map(normalizeSearch).some(variant => normalizedTitle.includes(variant)));
   }
   // "Add to wishlist" link shown in the Safe to buy message and the empty Library
   // state. The click is handled in app.js.

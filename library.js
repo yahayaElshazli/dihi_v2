@@ -80,7 +80,7 @@
 
     const items = topLevelItems
       .filter(i => activeType === 'all' || (i.mediaType || 'Movie') === activeType)
-      .filter(i => titleMatches(i.title, q))
+      .filter(i => titleMatches(i.title, q, libFilter.value))
       .filter(i => activeFormat === 'all' || (i.format || 'Unknown') === activeFormat)
       .sort((a,b) => a.title.localeCompare(b.title));
 

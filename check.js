@@ -3,7 +3,9 @@
   const checkResults = document.getElementById('checkResults');
   function checkTitleMatches(item, raw, normalizedQuery, queryWords) {
     const searchable = [item.title, ...(item.providerIds?.tmdbAliases || [])].map(normalizeSearch).join(' ');
-    return searchable.includes(normalizedQuery) || (queryWords.length > 1 && queryWords.every(word => searchable.includes(normalizeSearch(word))));
+    const querySpellings = spellingSearchVariants(raw).map(normalizeSearch);
+    return querySpellings.some(query => query && searchable.includes(query)) ||
+      (queryWords.length > 1 && queryWords.every(word => spellingSearchVariants(word).map(normalizeSearch).some(variant => searchable.includes(variant))));
   }
 
   checkInput.addEventListener('input', () => {

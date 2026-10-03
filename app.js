@@ -112,7 +112,7 @@
     const host = document.getElementById('checkWishlistGrid');
     if (!host) return;
     const q = normalizeSearch(checkInput.value);
-    const items = [...data.wishlist].filter(i => titleMatches(i.title, q)).sort((a,b) => a.title.localeCompare(b.title));
+    const items = [...data.wishlist].filter(i => titleMatches(i.title, q, checkInput.value)).sort((a,b) => a.title.localeCompare(b.title));
     if (!items.length) {
       host.innerHTML = `<div class="empty">${q ? 'No wishlist titles match this search.' : 'Nothing on your wishlist yet.'}</div>`;
       return;
