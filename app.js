@@ -237,9 +237,19 @@
   let scannedMovieData = null;
   let barcodeLookupSequence = 0;
 
-  function barcodeProductTitle(product) {
-    return String(product?.title || product?.name || '').replace(/\b(?:blu[ -]?ray|4k\s*(?:ultra\s*)?hd|ultra\s*hd|dvd(?:-video)?)\b/gi, ' ')
-      .replace(/[\[\](){}]/g, ' ').replace(/\s+/g, ' ').replace(/\s*[-:|,]\s*$/, '').trim();
+  function parseBarcodeProduct(product) {
+    const rawTitle = String(product?.title || product?.name || '')
+      .replace(/^\s*\d{3,}\s*[-–—:]\s*/, '');
+    const yearMatches = [...rawTitle.matchAll(/\b((?:18|19|20|21)\d{2})\b/g)];
+    const yearMatch = yearMatches.filter(match => match.index > 0).pop();
+    const descriptionYear = String(product?.description || '').match(/\b((?:18|19|20|21)\d{2})\b/);
+    const year = yearMatch?.[1] || descriptionYear?.[1] || '';
+    let title = yearMatch ? rawTitle.slice(0, yearMatch.index) : rawTitle;
+    title = title.replace(/\b(?:brand\s+)?new\s*(?:&|and)\s*sealed\b/gi, ' ')
+      .replace(/\b(?:blu[ -]?ray|4k\s*(?:ultra\s*)?hd|ultra\s*hd|dvd(?:-video)?)\b/gi, ' ')
+      .replace(/(?<=[a-z])4(?=[a-z])/gi, 'a')
+      .replace(/[\[\](){}]/g, ' ').replace(/\s+/g, ' ').replace(/[\s\-–—:|,]+$/, '').trim();
+    return { title, year };
   }
 
   addBarcode.addEventListener('barcode:scanned', async event => {
@@ -259,18 +269,17 @@
         barcodeLookupMsg.textContent = 'No product title found for this barcode. Enter the film title manually.';
         return;
       }
-      const productTitle = barcodeProductTitle(product);
-      const yearMatch = `${product.title || ''} ${product.description || ''}`.match(/\b((?:18|19|20|21)\d{2})\b/);
+      const { title: productTitle, year: productYear } = parseBarcodeProduct(product);
       if (!productTitle) {
         barcodeLookupMsg.textContent = 'The barcode matched a product, but it did not include a usable title.';
         return;
       }
 
       barcodeLookupMsg.textContent = 'Found a product. Matching it to TMDB…';
-      const movieData = await fetchMovieData(productTitle, yearMatch?.[1] || '');
+      const movieData = await fetchMovieData(productTitle, productYear);
       if (request !== barcodeLookupSequence) return;
       if (movieData.title) {
-        const year = movieData.metadata.productionYear || yearMatch?.[1] || '';
+        const year = movieData.metadata.productionYear || productYear;
         addTitle.value = movieData.title;
         document.getElementById('addReleaseYear').value = year;
         addTitle.dispatchEvent(new Event('input', { bubbles: true }));
@@ -278,7 +287,7 @@
         barcodeLookupMsg.textContent = `Found “${movieData.title}”${year ? ` (${year})` : ''} and loaded its TMDB details.`;
       } else {
         addTitle.value = productTitle;
-        if (yearMatch) document.getElementById('addReleaseYear').value = yearMatch[1];
+        document.getElementById('addReleaseYear').value = productYear;
         addTitle.dispatchEvent(new Event('input', { bubbles: true }));
         barcodeLookupMsg.textContent = `Found “${productTitle}”, but TMDB could not match it. Check the title before adding.`;
       }
