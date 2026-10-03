@@ -249,11 +249,10 @@
     barcodeLookupMsg.style.color = 'var(--ink-dim)';
     barcodeLookupMsg.textContent = 'Looking up barcode…';
     try {
-      const response = await fetch(`https://api.upcitemdb.com/prod/trial/lookup?upc=${encodeURIComponent(barcode)}`, {
-        headers: { Accept: 'application/json' }
-      });
-      if (!response.ok) throw new Error(response.status === 429 ? 'The barcode lookup limit has been reached. Try again later.' : 'Barcode lookup is temporarily unavailable.');
-      const result = await response.json();
+      if (!supabaseClient) throw new Error('Sign in before looking up a barcode.');
+      const { data: result, error } = await supabaseClient.functions.invoke('barcode-lookup', { body: { barcode } });
+      if (error) throw new Error('Barcode lookup service is unavailable. The Supabase barcode-lookup function must be deployed.');
+      if (result?.error) throw new Error(result.error);
       if (request !== barcodeLookupSequence) return;
       const product = (result.items || []).find(item => item.title || item.name);
       if (!product) {
