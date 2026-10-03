@@ -22,6 +22,16 @@ function rankTmdbResult(result, title, year, isSeries = false) {
   if (candidateTitles.includes(wanted)) score += 100;
   else if (candidateTitles.some(value => value.startsWith(wanted) || wanted.startsWith(value))) score += 45;
   else if (candidateTitles.some(value => value.includes(wanted) || wanted.includes(value))) score += 25;
+  else {
+    const wantedWords = new Set(wanted.split(/\s+/).filter(Boolean));
+    const bestOverlap = Math.max(0, ...candidateTitles.map(value => {
+      const candidateWords = new Set(value.split(/\s+/).filter(Boolean));
+      const shared = [...wantedWords].filter(word => candidateWords.has(word)).length;
+      if (shared === wantedWords.size && shared === candidateWords.size) return 90;
+      return Math.round(60 * shared / Math.max(wantedWords.size, candidateWords.size, 1));
+    }));
+    score += bestOverlap;
+  }
   const resultYear = String(isSeries ? result.first_air_date || '' : result.release_date || '').slice(0, 4);
   if (year && resultYear) score += resultYear === year ? 100 : -70;
   return score;
@@ -36,9 +46,12 @@ async function searchTmdb(title, format = 'Movie', year = '', mediaType = '') {
   const parsed = parseMovieTitle(title, year);
   const searchTitle = parsed.title;
   const searchYear = parsed.year;
+  const normalizedTitle = normalizeTmdbTitle(searchTitle);
+  const words = normalizedTitle.split(/\s+/).filter(Boolean);
   const queries = [...new Set([
-    normalizeTmdbTitle(searchTitle),
+    normalizedTitle,
     searchTitle,
+    words.length === 2 ? words.reverse().join(' ') : ''
   ].filter(Boolean))];
   let requestFailed = false;
   const runSearch = async (query, includeYear) => {
@@ -55,7 +68,8 @@ async function searchTmdb(title, format = 'Movie', year = '', mediaType = '') {
   };
 
   // Normalize punctuation first (e.g. “Avengers: Endgame” -> “avengers endgame”),
-  // then fall back to the user's wording, and finally relax the year filter.
+  // then fall back to the user's wording and reversed two-word order, and
+  // finally relax the year filter.
   for (const includeYear of (searchYear ? [true, false] : [false])) {
     for (const query of queries) {
       const results = await runSearch(query, includeYear);
