@@ -145,7 +145,7 @@
           ${i.cover ? `<img class="wishlist-poster" src="${escapeHtml(i.cover)}" alt="${escapeHtml(i.title)} poster" loading="lazy">` : `<div class="wishlist-poster wishlist-poster-placeholder" data-placeholder-index="${index}">🎬</div>`}
         </div>
         <div class="wishlist-title">${escapeHtml(i.title)}</div>
-        <button type="button" data-id="${escapeHtml(String(i.id || ''))}" class="wish-add-btn">Add</button>
+        <button type="button" data-id="${escapeHtml(String(i.id || ''))}" class="wish-add-btn">Got it!</button>
         <button data-id="${escapeHtml(String(i.id || ''))}" class="delw">Remove</button>
       </div>`).join('');
     renderCheckWishlist();

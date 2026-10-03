@@ -56,7 +56,7 @@
   .wishlist-poster-placeholder { display: flex; align-items: center; justify-content: center; color: var(--ink-dim); }
   .wishlist-title { min-width: 0; flex: 1; font-size: 14px; }
   .wishlist-row .delw { padding: 8px 10px; background: transparent; color: var(--ink-dim); border: 1px solid var(--line); }
-  .wishlist-row .wish-add-btn { padding: 8px 10px; background: var(--amber); color: var(--cream-light); }
+  .wishlist-row .wish-add-btn { padding: 8px 10px; background: transparent; color: var(--ink-dim); border: 1px solid var(--line); }
   .wish-add-sheet { position: fixed; inset: auto 0 0; width: min(100%, 480px); max-width: none; max-height: min(80vh, 520px); margin: 0 auto; padding: 14px 20px calc(20px + env(safe-area-inset-bottom, 0px)); border: 1px solid var(--line); border-bottom: 0; border-radius: 18px 18px 0 0; background: var(--panel); color: var(--ink); box-shadow: 0 -12px 36px rgba(0,0,0,.3); }
   .wish-add-sheet::backdrop { background: rgba(0,0,0,.58); }
   .wish-sheet-grabber { width: 42px; height: 4px; border-radius: 4px; margin: 0 auto 16px; background: var(--line); }
