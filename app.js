@@ -237,9 +237,13 @@
   let scannedMovieData = null;
   let barcodeLookupSequence = 0;
 
+  function stripBarcodeCatalogId(value) {
+    return String(value || '').normalize('NFKC').replace(/[\u200B-\u200D\u2060\uFEFF]/g, '')
+      .replace(/^\s*(?:(?:id|item|sku)\s*[:#-]\s*)?[\[(]?#?\s*\d{5,}\s*[\])]?\s*[-\u2010-\u2015\u2212:|]\s*/i, '');
+  }
+
   function parseBarcodeProduct(product) {
-    const rawTitle = String(product?.title || product?.name || '')
-      .replace(/^\s*\d{3,}\s*[-–—:]\s*/, '');
+    const rawTitle = stripBarcodeCatalogId(product?.title || product?.name);
     const yearMatches = [...rawTitle.matchAll(/\b((?:18|19|20|21)\d{2})\b/g)];
     const yearMatch = yearMatches.filter(match => match.index > 0).pop();
     const descriptionYear = String(product?.description || '').match(/\b((?:18|19|20|21)\d{2})\b/);
@@ -248,7 +252,8 @@
     title = title.replace(/\b(?:brand\s+)?new\s*(?:&|and)\s*sealed\b/gi, ' ')
       .replace(/\b(?:blu[ -]?ray|4k\s*(?:ultra\s*)?hd|ultra\s*hd|dvd(?:-video)?)\b/gi, ' ')
       .replace(/(?<=[a-z])4(?=[a-z])/gi, 'a')
-      .replace(/[\[\](){}]/g, ' ').replace(/\s+/g, ' ').replace(/[\s\-–—:|,]+$/, '').trim();
+      .replace(/[\[\](){}]/g, ' ').replace(/\s+/g, ' ').replace(/[\s\-–—:|,]+$/, '').trim()
+      .replace(/^\s*\d{5,}\s*[-\u2010-\u2015\u2212:|]\s*/, '');
     return { title, year };
   }
 
@@ -279,12 +284,13 @@
       const movieData = await fetchMovieData(productTitle, productYear);
       if (request !== barcodeLookupSequence) return;
       if (movieData.title) {
+        const canonicalTitle = stripBarcodeCatalogId(movieData.title);
         const year = movieData.metadata.productionYear || productYear;
-        addTitle.value = movieData.title;
+        addTitle.value = canonicalTitle;
         document.getElementById('addReleaseYear').value = year;
         addTitle.dispatchEvent(new Event('input', { bubbles: true }));
-        scannedMovieData = { barcode, title: movieData.title, year: String(year), metadata: movieData.metadata, cover: movieData.cover };
-        barcodeLookupMsg.textContent = `Found “${movieData.title}”${year ? ` (${year})` : ''} and loaded its TMDB details.`;
+        scannedMovieData = { barcode, title: canonicalTitle, year: String(year), metadata: movieData.metadata, cover: movieData.cover };
+        barcodeLookupMsg.textContent = `Found “${canonicalTitle}”${year ? ` (${year})` : ''} and loaded its TMDB details.`;
       } else {
         addTitle.value = productTitle;
         document.getElementById('addReleaseYear').value = productYear;
