@@ -249,6 +249,9 @@
     const descriptionYear = String(product?.description || '').match(/\b((?:18|19|20|21)\d{2})\b/);
     const year = yearMatch?.[1] || descriptionYear?.[1] || '';
     let title = yearMatch ? rawTitle.slice(0, yearMatch.index) : rawTitle;
+    // Product listings often append bundle/edition details and cast names after the film title.
+    // Cut at the first recognizable packaging marker so TMDB sees the actual movie title.
+    title = title.replace(/\s*(?:[-–—|:]\s*)?\b(?:triple\s*play|double\s*play|combo\s*pack|steelbook|limited\s+edition|special\s+edition|collector(?:'s|s)?\s+edition|includes?\b|with\s+(?:digital|dvd|blu[ -]?ray)|digital\s+(?:copy|download)|bonus\s+(?:disc|features?)|\d+\s*[- ]?disc)\b[\s\S]*$/i, ' ');
     title = title.replace(/\b(?:brand\s+)?new\s*(?:&|and)\s*sealed\b/gi, ' ')
       .replace(/\b(?:blu[ -]?ray|4k\s*(?:ultra\s*)?hd|ultra\s*hd|dvd(?:-video)?)\b/gi, ' ')
       .replace(/(?<=[a-z])4(?=[a-z])/gi, 'a')
